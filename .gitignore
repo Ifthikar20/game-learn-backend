@@ -65,3 +65,8 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+
+.env*
+.env.example
+.env.production
+
