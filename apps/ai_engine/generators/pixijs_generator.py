@@ -73,79 +73,72 @@ class PixiJSGenerator:
             Generated game data
         """
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS v8 game developer. Create complete, playable games from scratch based on user requests.
+            ("system", """You are an expert PixiJS v8 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
 
-Your task: Analyze the request and create a FULLY FUNCTIONAL PixiJS game with appropriate mechanics.
+CRITICAL: Games must be FULLY IMPLEMENTED with:
+- Complete game mechanics (not simplified versions)
+- Detailed graphics (draw actual shapes for cars, bikes, ships, etc.)
+- Full physics if needed (gravity, velocity, collision)
+- Proper game loop with all features
+- UI elements (score, instructions, game over)
+- Input handling (keyboard, mouse, touch)
+- Win/lose conditions and restart
 
-Examples:
+Example of GOOD complexity (motorcycle game):
+- Physics: gravity, velocity X/Y, rotation, air control
+- Graphics: motorcycle with body, wheels, rider, flame exhaust
+- Mechanics: platforms, ramps, flip detection, landing angle checking
+- Features: combo system, score tracking, scrolling world
+- Polish: multiple platforms, smooth camera follow, wheel rotation
 
-"flying ship game" →
-- Spaceship that moves/rotates
-- Obstacles to avoid
-- Space background with stars
-- Tap/click to thrust upward
-- Gravity pulling down
-- Scrolling obstacles
-- Score tracking
+BAD examples (too simple):
+- ❌ Single rectangle for a car
+- ❌ No collision detection
+- ❌ Missing game over logic
+- ❌ No restart functionality
 
-"car racing game" →
-- 3-lane system
-- Player car switches lanes (arrow keys)
-- Enemy cars spawn and scroll
-- Collision detection
-- Speed increases
-- Score for distance
+GOOD examples (properly detailed):
+- ✅ Car with body, windows, wheels drawn separately
+- ✅ Complete collision with all obstacles
+- ✅ Full game flow: start → play → game over → restart
+- ✅ Score system and UI
 
-"puzzle game" →
-- Grid-based gameplay
-- Matching/clicking mechanics
-- Win/lose conditions
-- Score system
-
-CRITICAL RULES:
-1. Create the EXACT game type requested (flying ship = FLYING game, NOT quiz!)
-2. Include ALL necessary mechanics
-3. Use modern PixiJS v8 API with import statement
-4. Make it FULLY PLAYABLE with controls, game over, restart
-5. Include instructions on screen
-6. Return COMPLETE working code
-
-PixiJS v8 Code Structure:
+Code Structure Requirements:
 ```javascript
 import {{ Application, Graphics, Text, Container }} from 'pixi.js';
 
 (async () => {{
   const app = new Application();
-  await app.init({{
-    background: '#colorcode',
-    resizeTo: window,
-    antialias: true
-  }});
+  await app.init({{ background: '#color', resizeTo: window, antialias: true }});
   document.body.appendChild(app.canvas);
 
-  // Game variables
-  let score = 0;
-  let gameOver = false;
-  let gameStarted = false;
-
-  // Create graphics using Graphics, Text, Container
-  // Add input handling (keyboard, mouse, touch)
-  // Use app.ticker.add() for game loop
-  // Include collision detection
-  // Add game over and restart logic
+  // 1. Game variables (score, gameOver, velocities, etc.)
+  // 2. Create all graphics using Graphics() - draw detailed shapes
+  // 3. Game functions (collision, spawn, reset, etc.)
+  // 4. Input handling (keyboard/mouse/touch)
+  // 5. Game loop with app.ticker.add()
+  // 6. All game logic (physics, scoring, win/lose)
 }})();
 ```
 
-Make it creative, fun, and COMPLETE!"""),
-            ("user", """Create a complete PixiJS game for this request:
+Make games FUN, COMPLETE, and DETAILED like a real indie game!"""),
+            ("user", """Create a COMPLETE PixiJS game for this request:
 
 "{user_prompt}"
 
-Return ONLY valid JSON (no markdown, no code blocks):
+Requirements:
+- Must be FULLY playable from start to finish
+- Include detailed graphics (not just simple rectangles)
+- Implement complete game mechanics
+- Add score tracking and game over
+- Include instructions and restart
+- Make it fun and polished!
+
+Return ONLY valid JSON (no markdown, no extra text):
 {{
-    "title": "Game Title",
-    "description": "Brief description of gameplay",
-    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Complete game code here\\n}})();",
+    "title": "Descriptive Game Title",
+    "description": "What makes this game fun",
+    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Your complete game code\\n}})();",
     "game_data": {{}}
 }}""")
         ])
