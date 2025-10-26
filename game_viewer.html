@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixiJS Game Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #2c3e50;
+            color: white;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-section {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 60%;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 30px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        #game-info {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        #game-container {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            min-height: 400px;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #c0392b;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #2ecc71;
+        }
+        .game-list {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        .game-list:hover {
+            background: #415b76;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 PixiJS Game Viewer</h1>
+            <p>Play your RAG-generated games</p>
+        </div>
+
+        <div class="input-section">
+            <h3>Enter Game Details:</h3>
+            <input type="text" id="gameId" placeholder="Game ID (e.g., 9fae697b-cb90-4786-a1fc-a64a2e8aad28)">
+            <button onclick="loadGame()">🎮 Load Game</button>
+            <button onclick="listGames()">📋 List My Games</button>
+        </div>
+
+        <div id="game-list"></div>
+
+        <div id="game-info">
+            <h3 id="game-title"></h3>
+            <p id="game-description"></p>
+            <button onclick="playGame()">▶️ Play Game</button>
+        </div>
+
+        <div id="game-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+    <script>
+        // Configuration - UPDATE THESE
+        const API_URL = 'http://localhost:8000';
+        const TOKEN = 'YOUR_TOKEN_HERE'; // Paste your access token here
+
+        let currentGameData = null;
+
+        async function listGames() {
+            try {
+                const response = await fetch(`${API_URL}/api/games/`, {
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const gameListDiv = document.getElementById('game-list');
+                    gameListDiv.innerHTML = '<h3>Your Games:</h3>';
+
+                    result.data.forEach(game => {
+                        const gameDiv = document.createElement('div');
+                        gameDiv.className = 'game-list';
+                        gameDiv.innerHTML = `
+                            <strong>${game.title}</strong><br>
+                            <small>ID: ${game.id}</small><br>
+                            <small>Created: ${new Date(game.created_at).toLocaleString()}</small>
+                        `;
+                        gameDiv.onclick = () => {
+                            document.getElementById('gameId').value = game.id;
+                            loadGame();
+                        };
+                        gameListDiv.appendChild(gameDiv);
+                    });
+                }
+            } catch (error) {
+                alert('Error listing games: ' + error.message);
+            }
+        }
+
+        async function loadGame() {
+            const gameId = document.getElementById('gameId').value.trim();
+
+            if (!gameId) {
+                alert('Please enter a Game ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/games/${gameId}/play/`, {
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentGameData = result.data;
+
+                    // Show game info
+                    document.getElementById('game-title').textContent = result.data.title;
+                    document.getElementById('game-description').textContent = result.data.description;
+                    document.getElementById('game-info').style.display = 'block';
+
+                    alert('✅ Game loaded! Click "Play Game" to start.');
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to load game'));
+                }
+            } catch (error) {
+                alert('Error loading game: ' + error.message);
+            }
+        }
+
+        function playGame() {
+            if (!currentGameData) {
+                alert('Please load a game first');
+                return;
+            }
+
+            // Clear previous game
+            const gameContainer = document.getElementById('game-container');
+            gameContainer.innerHTML = '';
+
+            // Inject GAME_DATA as global variable
+            window.GAME_DATA = currentGameData.game_data;
+
+            // Execute the PixiJS code
+            try {
+                const script = document.createElement('script');
+                script.textContent = currentGameData.pixijs_code;
+                document.body.appendChild(script);
+
+                console.log('Game started!');
+                console.log('Game Data:', window.GAME_DATA);
+            } catch (error) {
+                gameContainer.innerHTML = `<div class="error">Error running game: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
