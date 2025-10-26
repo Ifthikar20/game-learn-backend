@@ -75,39 +75,18 @@ class PixiJSGenerator:
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert PixiJS v7 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
 
-CRITICAL: Games must be FULLY IMPLEMENTED with:
-- Complete game mechanics (not simplified versions)
-- Detailed graphics (draw actual shapes for cars, bikes, ships, etc.)
-- Full physics if needed (gravity, velocity, collision)
-- Proper game loop with all features
-- UI elements (score, instructions, game over)
-- Input handling (keyboard, mouse, touch)
-- Win/lose conditions and restart
+CRITICAL CODE STRUCTURE - FOLLOW THIS EXACTLY:
 
-Example of GOOD complexity (motorcycle game):
-- Physics: gravity, velocity X/Y, rotation, air control
-- Graphics: motorcycle with body, wheels, rider, flame exhaust
-- Mechanics: platforms, ramps, flip detection, landing angle checking
-- Features: combo system, score tracking, scrolling world
-- Polish: multiple platforms, smooth camera follow, wheel rotation
+1. ALWAYS wrap code in IIFE: (async () => {{ ... }})();
+2. ALWAYS initialize PIXI.Application properly
+3. ALWAYS use global PIXI object (NO imports)
+4. ALWAYS append to game-container div
+5. ALWAYS include game loop with app.ticker.add()
 
-BAD examples (too simple):
-- ❌ Single rectangle for a car
-- ❌ No collision detection
-- ❌ Missing game over logic
-- ❌ No restart functionality
-
-GOOD examples (properly detailed):
-- ✅ Car with body, windows, wheels drawn separately
-- ✅ Complete collision with all obstacles
-- ✅ Full game flow: start → play → game over → restart
-- ✅ Score system and UI
-
-Code Structure Requirements (PixiJS v7):
-IMPORTANT: DO NOT use import statements. PixiJS is loaded globally as PIXI.
+REQUIRED GAME STRUCTURE:
 ```javascript
 (async () => {{
-  // Use the global PIXI object - it's already loaded!
+  // ===== 1. SETUP =====
   const app = new PIXI.Application({{
     width: 800,
     height: 600,
@@ -115,7 +94,6 @@ IMPORTANT: DO NOT use import statements. PixiJS is loaded globally as PIXI.
     antialias: true
   }});
 
-  // Append to the game-container div, NOT document.body
   const container = document.getElementById('game-container');
   if (container) {{
     container.appendChild(app.view);
@@ -123,48 +101,124 @@ IMPORTANT: DO NOT use import statements. PixiJS is loaded globally as PIXI.
     document.body.appendChild(app.view);
   }}
 
-  // 1. Game variables (score, gameOver, velocities, etc.)
-  // 2. Create all graphics using new PIXI.Graphics() - draw detailed shapes
-  // 3. Game functions (collision, spawn, reset, etc.)
-  // 4. Input handling (keyboard/mouse/touch)
-  // 5. Game loop with app.ticker.add()
-  // 6. All game logic (physics, scoring, win/lose)
+  // ===== 2. GAME STATE =====
+  const gameState = {{
+    score: 0,
+    gameOver: false,
+    paused: false
+  }};
 
-  // Use PIXI.Graphics, PIXI.Text, PIXI.Container, PIXI.Sprite, etc.
+  // ===== 3. GRAPHICS OBJECTS =====
+  const player = new PIXI.Graphics();
+  const ui = new PIXI.Container();
+
+  // Draw player (example - make it detailed!)
+  player.beginFill(0xFF0000);
+  player.drawRect(0, 0, 50, 50);
+  player.endFill();
+  player.x = 100;
+  player.y = 100;
+  app.stage.addChild(player);
+
+  // ===== 4. UI ELEMENTS =====
+  const scoreText = new PIXI.Text('Score: 0', {{
+    fontFamily: 'Arial',
+    fontSize: 24,
+    fill: 0xFFFFFF
+  }});
+  scoreText.x = 10;
+  scoreText.y = 10;
+  app.stage.addChild(scoreText);
+
+  // ===== 5. GAME FUNCTIONS =====
+  function resetGame() {{
+    gameState.score = 0;
+    gameState.gameOver = false;
+    // Reset positions, etc.
+  }}
+
+  function updateScore(points) {{
+    gameState.score += points;
+    scoreText.text = 'Score: ' + gameState.score;
+  }}
+
+  // ===== 6. INPUT HANDLING =====
+  const keys = {{}};
+  window.addEventListener('keydown', (e) => {{
+    keys[e.key] = true;
+  }});
+  window.addEventListener('keyup', (e) => {{
+    keys[e.key] = false;
+  }});
+
+  // ===== 7. GAME LOOP =====
+  app.ticker.add((delta) => {{
+    if (gameState.gameOver || gameState.paused) return;
+
+    // Update player movement
+    if (keys['ArrowRight']) player.x += 5 * delta;
+    if (keys['ArrowLeft']) player.x -= 5 * delta;
+
+    // Update game logic
+    // Check collisions
+    // Update score
+  }});
+
+  // ===== 8. START GAME =====
+  resetGame();
 }})();
 ```
 
-Make games FUN, COMPLETE, and DETAILED like a real indie game!"""),
+REQUIREMENTS:
+✅ Complete game mechanics (physics, collisions, scoring)
+✅ Detailed graphics (shapes, colors, animations)
+✅ Full UI (score, instructions, game over screen)
+✅ Input handling (keyboard/mouse)
+✅ Win/lose conditions
+✅ Restart functionality
+✅ Smooth animations
+
+Make games FUN, COMPLETE, and DETAILED!"""),
             ("user", """Create a COMPLETE PixiJS game for this request:
 
 "{user_prompt}"
 
-Requirements:
-- Must be FULLY playable from start to finish
-- Include detailed graphics (not just simple rectangles)
-- Implement complete game mechanics
-- Add score tracking and game over
-- Include instructions and restart
-- Make it fun and polished!
-- DO NOT use import statements - use global PIXI object
-- Append canvas to game-container div, not document.body
+CRITICAL INSTRUCTIONS:
+1. Follow the EXACT structure from the system template
+2. Include ALL 8 sections: Setup, Game State, Graphics, UI, Functions, Input, Game Loop, Start
+3. Use the gameState object pattern for all state variables
+4. Make graphics detailed (not just rectangles - draw actual shapes!)
+5. Include complete game loop with proper physics
+6. Add restart functionality (press R to restart)
+7. Include game over screen with instructions
 
-Return your response in this EXACT format (no JSON, use delimiters):
+STRUCTURE YOUR CODE LIKE THIS:
+- Section 1: App setup + canvas append
+- Section 2: gameState object with all variables
+- Section 3: Create and draw all graphics objects
+- Section 4: UI elements (score, instructions, game over)
+- Section 5: Game functions (reset, checkCollision, etc.)
+- Section 6: Input handlers (keyboard/mouse)
+- Section 7: Game loop with app.ticker.add()
+- Section 8: Call resetGame() to start
+
+Return your response in this EXACT format:
 
 TITLE:
-Descriptive Game Title
+[One-line game title]
 
 DESCRIPTION:
-What makes this game fun and engaging
+[One-line description of what makes it fun]
 
 CODE_START
 (async () => {{
-  const app = new PIXI.Application({{ width: 800, height: 600, backgroundColor: 0x1099bb, antialias: true }});
-  document.getElementById('game-container').appendChild(app.view);
-
-  // Your complete game code here
+  // ===== 1. SETUP =====
+  const app = new PIXI.Application({{...}});
+  // ... rest of structured code following the 8-section template
 }})();
-CODE_END""")
+CODE_END
+
+IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeholders!""")
         ])
 
         # Generate with OpenAI
@@ -191,7 +245,20 @@ CODE_END""")
             description = content[desc_match + 12:code_start].strip()
             pixijs_code = content[code_start + 10:code_end].strip()
 
+            # Validate the extracted code
+            if not pixijs_code or len(pixijs_code) < 50:
+                raise ValueError(f"Generated code is too short ({len(pixijs_code)} chars)")
+
+            # Check for basic structure
+            if 'PIXI.Application' not in pixijs_code:
+                raise ValueError("Code missing PIXI.Application initialization")
+
+            if 'game-container' not in pixijs_code and 'document.body' not in pixijs_code:
+                raise ValueError("Code missing canvas append logic")
+
             print(f"✓ Successfully parsed game: {title}")
+            print(f"✓ Code length: {len(pixijs_code)} characters")
+            print(f"✓ Code preview (first 200 chars): {pixijs_code[:200]}")
 
             return {
                 'title': title,

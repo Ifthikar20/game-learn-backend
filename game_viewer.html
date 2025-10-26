@@ -501,16 +501,44 @@
             try {
                 console.log('Starting game...');
                 console.log('Game Data:', window.GAME_DATA);
+                console.log('Code length:', currentGameData.pixijs_code.length, 'characters');
+                console.log('Code preview (first 300 chars):', currentGameData.pixijs_code.substring(0, 300));
+
+                // Validate code before execution
+                if (!currentGameData.pixijs_code || currentGameData.pixijs_code.length < 50) {
+                    throw new Error('Game code is too short or empty');
+                }
+
+                if (!currentGameData.pixijs_code.includes('PIXI.Application')) {
+                    throw new Error('Game code is missing PIXI.Application setup');
+                }
 
                 // Create and execute script
                 const script = document.createElement('script');
                 script.textContent = currentGameData.pixijs_code;
+
+                // Add error event listener
                 script.onerror = (error) => {
-                    console.error('Script execution error:', error);
-                    gameContainer.innerHTML = `<div class="error">Error loading game script: ${error.message || 'Unknown error'}</div>`;
+                    console.error('Script load error:', error);
+                    gameContainer.innerHTML = `<div class="error">Error loading game script. Check console for details.</div>`;
                 };
 
-                // Append to body and remove after execution
+                // Wrap in try-catch to catch runtime errors
+                window.addEventListener('error', function gameErrorHandler(event) {
+                    if (event.filename.includes('game_viewer.html') || event.filename === '') {
+                        console.error('Game runtime error:', event.error || event.message);
+                        gameContainer.innerHTML = `<div class="error">
+                            <strong>Game Error:</strong><br>
+                            ${event.message}<br>
+                            <small>Line: ${event.lineno}, Column: ${event.colno}</small><br><br>
+                            Check the console for full error details.
+                        </div>`;
+                        // Remove this handler after first error
+                        window.removeEventListener('error', gameErrorHandler);
+                    }
+                });
+
+                // Append to body
                 document.body.appendChild(script);
 
                 // Clean up script tag after a short delay
@@ -523,7 +551,10 @@
                 console.log('Game script injected successfully!');
             } catch (error) {
                 console.error('Error running game:', error);
-                gameContainer.innerHTML = `<div class="error">Error running game: ${error.message}</div>`;
+                gameContainer.innerHTML = `<div class="error">
+                    <strong>Error:</strong> ${error.message}<br><br>
+                    <small>Check console for full details</small>
+                </div>`;
             }
         }
     </script>
