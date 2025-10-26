@@ -30,9 +30,10 @@ class PixiJSGenerator:
         if self.use_openai:
             self.llm = ChatOpenAI(
                 model="gpt-3.5-turbo",
-                temperature=0.7,
+                temperature=0.9,  # Higher creativity
                 api_key=getattr(settings, 'OPENAI_API_KEY')
             )
+            print(f"✓ OpenAI enabled for game generation")
 
     def generate_game(self, user_prompt: str) -> Dict[str, Any]:
         """
@@ -60,12 +61,18 @@ class PixiJSGenerator:
         # Step 2: Generate customized game using OpenAI (if available)
         if self.use_openai:
             try:
-                return self._generate_with_openai(user_prompt, best_template, templates)
+                print(f"🤖 Generating unique game with OpenAI for: '{user_prompt}'")
+                print(f"📋 Using template: {best_template.get('name', 'Unknown')}")
+                result = self._generate_with_openai(user_prompt, best_template, templates)
+                print(f"✅ Generated game: {result.get('title', 'Unknown')}")
+                return result
             except Exception as e:
-                print(f"OpenAI generation failed: {str(e)}")
+                print(f"❌ OpenAI generation failed: {str(e)}")
+                print(f"⚠️  Falling back to template: {best_template.get('name')}")
                 # Fall back to template-based generation
                 return self._generate_from_template(user_prompt, best_template)
         else:
+            print(f"⚠️  OpenAI disabled, using template directly")
             # Use template directly with basic customization
             return self._generate_from_template(user_prompt, best_template)
 
@@ -91,33 +98,51 @@ class PixiJSGenerator:
 
         # Create prompt for OpenAI
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS game developer. Create UNIQUE, CREATIVE games based on user requests.
+            ("system", """You are an expert PixiJS game developer. You MUST create COMPLETELY UNIQUE games for EACH request.
 
-You will receive:
-1. User's game description
-2. Relevant PixiJS templates for inspiration
+🚨 CRITICAL RULES:
+1. ANALYZE the user's request carefully - what game type do they want?
+2. If they say "flying car", "space shooter", "platformer" - make THAT type of game, NOT a quiz!
+3. DO NOT default to quiz games unless explicitly requested
+4. Create BRAND NEW code from scratch based on the template mechanics
+5. Change EVERYTHING: colors, shapes, text, UI, gameplay feel
+6. Make it look and play completely different from any previous game
 
-CRITICAL RULES:
-- Make EACH game COMPLETELY UNIQUE - no two games should look the same
-- Heavily customize visuals: change ALL colors, shapes, sizes, and styles
-- Customize text, labels, and UI to match the theme
-- For "flying car": draw an actual car shape with wheels, windows, body
-- For "space theme": add stars background, use space colors, alien shapes
-- Be CREATIVE and DETAILED in visual customizations
-- Use modern PixiJS v8 API with Graphics, Text, Container
-- Code must be complete and ready to run
-- Use GAME_DATA for dynamic content if needed"""),
+For different game types:
+- FLYING/FLAPPY games: obstacles to avoid, tap to fly, scrolling
+- QUIZ games: only if user asks for quiz/questions/trivia
+- PLATFORMER games: jumping, platforms, gravity
+- SHOOTER games: bullets, enemies, aiming
+- PUZZLE games: matching, grid-based logic
+
+Visual customization (REQUIRED):
+- Change ALL colors to match theme
+- Draw custom shapes (cars, spaceships, characters)
+- Update ALL text and labels
+- Theme-appropriate backgrounds
+- Unique UI styling
+
+Use PixiJS v8 API:
+- PIXI.Graphics() for shapes
+- PIXI.Text() for text
+- PIXI.Container() for grouping
+- app.ticker.add() for game loop"""),
             ("user", """User Request: {user_prompt}
 
+Available Templates for Reference:
 {template_context}
 
-Create a UNIQUE, CUSTOMIZED game that perfectly matches this request. Make it visually distinct and engaging.
+Task: Create a UNIQUE game that matches the user's request. Do NOT just copy the template!
+
+If user says "flying car" → Create a FLYING GAME with car theme
+If user says "quiz" → Create a QUIZ GAME
+If user says "shooter" → Create a SHOOTER GAME
 
 Return ONLY valid JSON:
 {{
-    "title": "Creative Title",
-    "description": "Brief description",
-    "pixijs_code": "// Complete PixiJS v8 code",
+    "title": "Descriptive Title",
+    "description": "What the game is about",
+    "pixijs_code": "// Complete unique PixiJS code",
     "game_data": {{}}
 }}""")
         ])
