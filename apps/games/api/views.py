@@ -10,19 +10,20 @@ from ..serializers import (
     GamePlaySerializer
 )
 from apps.ai_engine.generators.simple_generator import SimpleGameGenerator
+from apps.ai_engine.generators.pixijs_generator import PixiJSGenerator
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_game(request):
-    """Generate a new game"""
+    """Generate a new game using RAG-powered PixiJS generator"""
     serializer = GameGenerateSerializer(data=request.data)
-    
+
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     prompt = serializer.validated_data['prompt']
-    
+
     # Create game with 'generating' status
     user_game = UserGame.objects.create(
         user=request.user,
@@ -32,11 +33,12 @@ def generate_game(request):
         user_prompt=prompt,
         status='generating'
     )
-    
-    # Generate game (synchronous for MVP, can be async later)
+
+    # Generate game using RAG-powered generator
     try:
-        generator = SimpleGameGenerator()
-        result = generator.generate_quiz_game(prompt)
+        # Use PixiJSGenerator with RAG for intelligent template retrieval
+        generator = PixiJSGenerator(use_openai=True)
+        result = generator.generate_game(prompt)
         
         # Update game with generated content
         user_game.title = result['title']
