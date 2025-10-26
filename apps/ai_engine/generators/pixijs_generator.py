@@ -73,7 +73,7 @@ class PixiJSGenerator:
             Generated game data
         """
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS v8 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
+            ("system", """You are an expert PixiJS v7 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
 
 CRITICAL: Games must be FULLY IMPLEMENTED with:
 - Complete game mechanics (not simplified versions)
@@ -103,21 +103,34 @@ GOOD examples (properly detailed):
 - ✅ Full game flow: start → play → game over → restart
 - ✅ Score system and UI
 
-Code Structure Requirements:
+Code Structure Requirements (PixiJS v7):
+IMPORTANT: DO NOT use import statements. PixiJS is loaded globally as PIXI.
 ```javascript
-import {{ Application, Graphics, Text, Container }} from 'pixi.js';
-
 (async () => {{
-  const app = new Application();
-  await app.init({{ background: '#color', resizeTo: window, antialias: true }});
-  document.body.appendChild(app.canvas);
+  // Use the global PIXI object - it's already loaded!
+  const app = new PIXI.Application({{
+    width: 800,
+    height: 600,
+    backgroundColor: 0x1099bb,
+    antialias: true
+  }});
+
+  // Append to the game-container div, NOT document.body
+  const container = document.getElementById('game-container');
+  if (container) {{
+    container.appendChild(app.view);
+  }} else {{
+    document.body.appendChild(app.view);
+  }}
 
   // 1. Game variables (score, gameOver, velocities, etc.)
-  // 2. Create all graphics using Graphics() - draw detailed shapes
+  // 2. Create all graphics using new PIXI.Graphics() - draw detailed shapes
   // 3. Game functions (collision, spawn, reset, etc.)
   // 4. Input handling (keyboard/mouse/touch)
   // 5. Game loop with app.ticker.add()
   // 6. All game logic (physics, scoring, win/lose)
+
+  // Use PIXI.Graphics, PIXI.Text, PIXI.Container, PIXI.Sprite, etc.
 }})();
 ```
 
@@ -133,12 +146,14 @@ Requirements:
 - Add score tracking and game over
 - Include instructions and restart
 - Make it fun and polished!
+- DO NOT use import statements - use global PIXI object
+- Append canvas to game-container div, not document.body
 
 Return ONLY valid JSON (no markdown, no extra text):
 {{
     "title": "Descriptive Game Title",
     "description": "What makes this game fun",
-    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Your complete game code\\n}})();",
+    "pixijs_code": "(async () => {{\\n  const app = new PIXI.Application({{ width: 800, height: 600 }});\\n  document.getElementById('game-container').appendChild(app.view);\\n  // Your complete game code\\n}})();",
     "game_data": {{}}
 }}""")
         ])
