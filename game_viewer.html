@@ -80,17 +80,50 @@
         .game-list:hover {
             background: #415b76;
         }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            resize: vertical;
+            min-height: 80px;
+            font-family: Arial, sans-serif;
+            margin: 10px 0;
+        }
+        #generation-status {
+            display: none;
+            padding: 15px;
+            margin: 10px 0;
+            background: #2980b9;
+            border-radius: 5px;
+            color: white;
+        }
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🎮 PixiJS Game Viewer</h1>
-            <p>Play your RAG-generated games</p>
+            <p>Generate and play RAG-powered games</p>
         </div>
 
         <div class="input-section">
-            <h3>Enter Game Details:</h3>
+            <h3>✨ Generate New Game:</h3>
+            <textarea id="gamePrompt" placeholder="Describe the game you want to create... (e.g., 'Create a space shooter where the player shoots asteroids')"></textarea>
+            <button onclick="generateGame()">✨ Generate Game</button>
+            <div id="generation-status"></div>
+        </div>
+
+        <div class="input-section">
+            <h3>🎮 Play Existing Game:</h3>
             <input type="text" id="gameId" placeholder="Game ID (e.g., 9fae697b-cb90-4786-a1fc-a64a2e8aad28)">
             <button onclick="loadGame()">🎮 Load Game</button>
             <button onclick="listGames()">📋 List My Games</button>
@@ -233,6 +266,78 @@
                 console.error('Error loading game:', error);
                 alert('❌ Error loading game:\n\n' + error.message +
                       '\n\nCheck browser console (F12) for details');
+            }
+        }
+
+        async function generateGame() {
+            const prompt = document.getElementById('gamePrompt').value.trim();
+
+            if (!prompt) {
+                alert('Please enter a game description');
+                return;
+            }
+
+            const statusDiv = document.getElementById('generation-status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'loading';
+            statusDiv.innerHTML = '⏳ Generating game with RAG + GPT... This takes 10-30 seconds...';
+
+            try {
+                console.log('Generating game with prompt:', prompt);
+                const response = await fetch(`${API_URL}/api/games/generate/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                console.log('Generation response status:', response.status);
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication failed. Run: python get_auth_token.py');
+                    } else if (response.status === 0 || !response.status) {
+                        throw new Error('Cannot connect to backend. Is the server running?');
+                    }
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Generation result:', result);
+
+                if (result.success) {
+                    const game = result.data;
+
+                    statusDiv.className = '';
+                    statusDiv.innerHTML = `✅ Game created: <strong>${game.title}</strong><br>` +
+                                         `Status: ${game.status}<br>` +
+                                         `ID: ${game.id}`;
+
+                    // Auto-load the game if ready
+                    if (game.status === 'ready') {
+                        document.getElementById('gameId').value = game.id;
+                        setTimeout(() => {
+                            loadGame();
+                        }, 1000);
+                    } else {
+                        // Refresh game list to show new game
+                        setTimeout(() => {
+                            listGames();
+                        }, 1000);
+                    }
+
+                    // Clear the prompt
+                    document.getElementById('gamePrompt').value = '';
+
+                } else {
+                    throw new Error(result.message || 'Failed to generate game');
+                }
+            } catch (error) {
+                console.error('Error generating game:', error);
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = '❌ Generation failed: ' + error.message;
             }
         }
 
