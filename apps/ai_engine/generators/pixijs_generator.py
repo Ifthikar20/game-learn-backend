@@ -91,36 +91,34 @@ class PixiJSGenerator:
 
         # Create prompt for OpenAI
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS game developer. Your task is to customize game code and generate game data based on user requirements.
+            ("system", """You are an expert PixiJS game developer. Create UNIQUE, CREATIVE games based on user requests.
 
 You will receive:
 1. User's game description
-2. Relevant PixiJS game templates
+2. Relevant PixiJS templates for inspiration
 
-Your task:
-1. Customize the template code to match the user's requirements
-2. Generate appropriate game data (questions, levels, objects, etc.)
-3. Ensure the code is complete and ready to run
-4. Return valid JSON with title, description, pixijs_code, and game_data
-
-Important:
-- Keep the core PixiJS structure from the template
-- Customize colors, text, mechanics to match the user's theme
-- Generate realistic game data appropriate to the game type
-- Ensure game_data is a valid JSON object
-- The code should reference GAME_DATA which will be injected at runtime"""),
+CRITICAL RULES:
+- Make EACH game COMPLETELY UNIQUE - no two games should look the same
+- Heavily customize visuals: change ALL colors, shapes, sizes, and styles
+- Customize text, labels, and UI to match the theme
+- For "flying car": draw an actual car shape with wheels, windows, body
+- For "space theme": add stars background, use space colors, alien shapes
+- Be CREATIVE and DETAILED in visual customizations
+- Use modern PixiJS v8 API with Graphics, Text, Container
+- Code must be complete and ready to run
+- Use GAME_DATA for dynamic content if needed"""),
             ("user", """User Request: {user_prompt}
 
 {template_context}
 
-Generate a customized PixiJS game. Return ONLY valid JSON in this format:
+Create a UNIQUE, CUSTOMIZED game that perfectly matches this request. Make it visually distinct and engaging.
+
+Return ONLY valid JSON:
 {{
-    "title": "Game Title",
+    "title": "Creative Title",
     "description": "Brief description",
-    "pixijs_code": "// Complete PixiJS code here",
-    "game_data": {{
-        // Game-specific data (questions, levels, etc.)
-    }}
+    "pixijs_code": "// Complete PixiJS v8 code",
+    "game_data": {{}}
 }}""")
         ])
 
