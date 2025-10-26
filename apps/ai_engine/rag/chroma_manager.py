@@ -27,10 +27,11 @@ class ChromaManager:
         persist_directory = getattr(settings, 'CHROMA_PERSIST_DIRECTORY', './data/chroma_db')
         os.makedirs(persist_directory, exist_ok=True)
 
-        self.client = chromadb.Client(Settings(
-            persist_directory=persist_directory,
-            anonymized_telemetry=False
-        ))
+        # Use PersistentClient for disk persistence (not in-memory Client)
+        self.client = chromadb.PersistentClient(
+            path=persist_directory,
+            settings=Settings(anonymized_telemetry=False)
+        )
 
         # Initialize embedding model (using sentence-transformers)
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
