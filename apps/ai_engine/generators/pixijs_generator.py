@@ -39,143 +39,115 @@ class PixiJSGenerator:
         """
         Generate a complete PixiJS game based on user prompt
 
+        NEW APPROACH: Direct GPT generation from scratch (no RAG templates)
+
         Args:
             user_prompt: User's description of desired game
 
         Returns:
             Dictionary containing title, description, pixijs_code, and game_data
         """
-        # Step 1: Retrieve relevant templates using RAG
-        templates = self.retriever.retrieve_relevant_templates(
-            user_prompt=user_prompt,
-            n_results=2
-        )
-
-        if not templates:
-            # Fallback: Use simple quiz template if no templates found
-            return self._generate_fallback_quiz(user_prompt)
-
-        # Use the best matching template
-        best_template = templates[0]
-
-        # Step 2: Generate customized game using OpenAI (if available)
         if self.use_openai:
             try:
-                print(f"🤖 Generating unique game with OpenAI for: '{user_prompt}'")
-                print(f"📋 Using template: {best_template.get('name', 'Unknown')}")
-                result = self._generate_with_openai(user_prompt, best_template, templates)
+                print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
+                print(f"🚀 Creating from scratch (no templates)")
+                result = self._generate_direct_from_gpt(user_prompt)
                 print(f"✅ Generated game: {result.get('title', 'Unknown')}")
                 return result
             except Exception as e:
-                print(f"❌ OpenAI generation failed: {str(e)}")
-                print(f"⚠️  Falling back to template: {best_template.get('name')}")
-                # Fall back to template-based generation
-                return self._generate_from_template(user_prompt, best_template)
+                print(f"❌ GPT generation failed: {str(e)}")
+                print(f"⚠️  Falling back to simple template")
+                return self._generate_fallback_quiz(user_prompt)
         else:
-            print(f"⚠️  OpenAI disabled, using template directly")
-            # Use template directly with basic customization
-            return self._generate_from_template(user_prompt, best_template)
+            print(f"⚠️  OpenAI disabled, using fallback")
+            return self._generate_fallback_quiz(user_prompt)
 
-    def _generate_with_openai(
-        self,
-        user_prompt: str,
-        best_template: Dict[str, Any],
-        all_templates: list
-    ) -> Dict[str, Any]:
+    def _generate_direct_from_gpt(self, user_prompt: str) -> Dict[str, Any]:
         """
-        Generate game using OpenAI to customize the template
+        Generate game directly from GPT without using any templates
 
         Args:
             user_prompt: User's game description
-            best_template: Best matching template
-            all_templates: All retrieved templates for context
 
         Returns:
             Generated game data
         """
-        # Create context from templates
-        template_context = self.retriever.get_template_context(all_templates)
-
-        # Create prompt for OpenAI
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS game developer. You MUST create COMPLETELY UNIQUE games with UNIQUE MECHANICS for each request.
+            ("system", """You are an expert PixiJS v8 game developer. Create complete, playable games from scratch based on user requests.
 
-🚨 CRITICAL: DO NOT just recolor templates! Create NEW game mechanics!
+Your task: Analyze the request and create a FULLY FUNCTIONAL PixiJS game with appropriate mechanics.
 
-Examples of what to create:
+Examples:
 
-"car racing game" → 3-lane racing game:
-- 3 vertical lanes
-- Player car (can move left/right between lanes)
-- Enemy cars scrolling down from top
-- Collision detection
-- Speed increases over time
-- Score for cars passed
-
-"motorcycle game" → Physics-based stunt game:
-- Motorcycle with realistic physics
-- Platforms and ramps
-- Rotation/flip mechanics in air
-- Landing angle matters (crash if bad angle)
-- Combo system for tricks
-- Scrolling world
-
-"space shooter" → Top-down shooter:
-- Player spaceship
-- Enemies spawning
-- Bullet shooting
-- Enemy AI movement
-- Power-ups
-- Explosion effects
-
-"quiz game" → Question-based:
-- Multiple choice questions
-- Answer buttons
+"flying ship game" →
+- Spaceship that moves/rotates
+- Obstacles to avoid
+- Space background with stars
+- Tap/click to thrust upward
+- Gravity pulling down
+- Scrolling obstacles
 - Score tracking
-- Next question flow
 
-RULES:
-1. Analyze the request and identify CORE MECHANICS needed
-2. Create those specific mechanics from scratch
-3. DO NOT use quiz template for non-quiz requests
-4. Change ALL colors, shapes, and visual style
-5. Use modern PixiJS v8 API properly
-6. Make it FULLY PLAYABLE
+"car racing game" →
+- 3-lane system
+- Player car switches lanes (arrow keys)
+- Enemy cars spawn and scroll
+- Collision detection
+- Speed increases
+- Score for distance
 
-PixiJS v8 Structure:
+"puzzle game" →
+- Grid-based gameplay
+- Matching/clicking mechanics
+- Win/lose conditions
+- Score system
+
+CRITICAL RULES:
+1. Create the EXACT game type requested (flying ship = FLYING game, NOT quiz!)
+2. Include ALL necessary mechanics
+3. Use modern PixiJS v8 API with import statement
+4. Make it FULLY PLAYABLE with controls, game over, restart
+5. Include instructions on screen
+6. Return COMPLETE working code
+
+PixiJS v8 Code Structure:
 ```javascript
 import {{ Application, Graphics, Text, Container }} from 'pixi.js';
 
 (async () => {{
   const app = new Application();
-  await app.init({{ background: '#color', resizeTo: window, antialias: true }});
+  await app.init({{
+    background: '#colorcode',
+    resizeTo: window,
+    antialias: true
+  }});
   document.body.appendChild(app.canvas);
 
-  // Your game code here
-  // Use Graphics, Text, Container
+  // Game variables
+  let score = 0;
+  let gameOver = false;
+  let gameStarted = false;
+
+  // Create graphics using Graphics, Text, Container
+  // Add input handling (keyboard, mouse, touch)
   // Use app.ticker.add() for game loop
+  // Include collision detection
+  // Add game over and restart logic
 }})();
-```"""),
-            ("user", """User Request: "{user_prompt}"
+```
 
-Available Templates (USE ONLY AS INSPIRATION for mechanics):
-{template_context}
+Make it creative, fun, and COMPLETE!"""),
+            ("user", """Create a complete PixiJS game for this request:
 
-Task: Create a COMPLETELY NEW game with mechanics that match the request.
+"{user_prompt}"
 
-If "racing" → Create lane-based racing mechanics
-If "motorcycle/bike" → Create physics-based stunt mechanics
-If "shooter" → Create shooting and enemy mechanics
-If "quiz" → Create question/answer mechanics
-If "platformer" → Create jump/platform mechanics
-
-Return ONLY valid JSON (no markdown):
-{{{{
-    "title": "Descriptive Title",
-    "description": "What makes this game unique",
-    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Complete game code\\n}})();",
-    "game_data": {{{{}}}}
-}}}}""")
+Return ONLY valid JSON (no markdown, no code blocks):
+{{
+    "title": "Game Title",
+    "description": "Brief description of gameplay",
+    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Complete game code here\\n}})();",
+    "game_data": {{}}
+}}""")
         ])
 
         # Generate with OpenAI
