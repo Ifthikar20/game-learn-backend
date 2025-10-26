@@ -115,10 +115,14 @@ SIMPLE_JWT = {
 }
 
 # CORS
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
+CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
-    'http://localhost:3000'
-])
+    'http://localhost:3000',
+    'http://localhost:8080',      # ← ADD THIS
+    'http://127.0.0.1:8080',      # ← AND THIS
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # OpenAI (for MVP, we'll use a simple mock first)
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
