@@ -499,13 +499,30 @@
 
             // Execute the PixiJS code
             try {
+                console.log('Starting game...');
+                console.log('Game Data:', window.GAME_DATA);
+
+                // Create and execute script
                 const script = document.createElement('script');
                 script.textContent = currentGameData.pixijs_code;
+                script.onerror = (error) => {
+                    console.error('Script execution error:', error);
+                    gameContainer.innerHTML = `<div class="error">Error loading game script: ${error.message || 'Unknown error'}</div>`;
+                };
+
+                // Append to body and remove after execution
                 document.body.appendChild(script);
 
-                console.log('Game started!');
-                console.log('Game Data:', window.GAME_DATA);
+                // Clean up script tag after a short delay
+                setTimeout(() => {
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                }, 1000);
+
+                console.log('Game script injected successfully!');
             } catch (error) {
+                console.error('Error running game:', error);
                 gameContainer.innerHTML = `<div class="error">Error running game: ${error.message}</div>`;
             }
         }
