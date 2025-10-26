@@ -114,15 +114,18 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
-# CORS
+# CORS - Allow frontend connections
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:8080',      # ← ADD THIS
-    'http://127.0.0.1:8080',      # ← AND THIS
+    'http://localhost:5173',      # Vite dev server (gamify-study-pane)
+    'http://localhost:3000',      # React dev server
+    'http://localhost:8080',      # Alternative frontend
+    'http://127.0.0.1:5173',      # Localhost variant
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8080',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Security: only allow specific origins
 
 # OpenAI (for MVP, we'll use a simple mock first)
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
