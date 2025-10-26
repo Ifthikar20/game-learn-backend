@@ -29,14 +29,17 @@ class PixiJSGenerator:
 
         if self.use_openai:
             self.llm = ChatOpenAI(
-                model="gpt-3.5-turbo",
-                temperature=0.7,
+                model="gpt-4",  # Use GPT-4 for better creativity
+                temperature=0.9,
                 api_key=getattr(settings, 'OPENAI_API_KEY')
             )
+            print(f"✓ OpenAI GPT-4 enabled for game generation")
 
     def generate_game(self, user_prompt: str) -> Dict[str, Any]:
         """
         Generate a complete PixiJS game based on user prompt
+
+        NEW APPROACH: Direct GPT generation from scratch (no RAG templates)
 
         Args:
             user_prompt: User's description of desired game
@@ -44,91 +47,106 @@ class PixiJSGenerator:
         Returns:
             Dictionary containing title, description, pixijs_code, and game_data
         """
-        # Step 1: Retrieve relevant templates using RAG
-        templates = self.retriever.retrieve_relevant_templates(
-            user_prompt=user_prompt,
-            n_results=2
-        )
-
-        if not templates:
-            # Fallback: Use simple quiz template if no templates found
-            return self._generate_fallback_quiz(user_prompt)
-
-        # Use the best matching template
-        best_template = templates[0]
-
-        # Step 2: Generate customized game using OpenAI (if available)
         if self.use_openai:
             try:
-                return self._generate_with_openai(user_prompt, best_template, templates)
+                print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
+                print(f"🚀 Creating from scratch (no templates)")
+                result = self._generate_direct_from_gpt(user_prompt)
+                print(f"✅ Generated game: {result.get('title', 'Unknown')}")
+                return result
             except Exception as e:
-                print(f"OpenAI generation failed: {str(e)}")
-                # Fall back to template-based generation
-                return self._generate_from_template(user_prompt, best_template)
+                print(f"❌ GPT generation failed: {str(e)}")
+                print(f"⚠️  Falling back to simple template")
+                return self._generate_fallback_quiz(user_prompt)
         else:
-            # Use template directly with basic customization
-            return self._generate_from_template(user_prompt, best_template)
+            print(f"⚠️  OpenAI disabled, using fallback")
+            return self._generate_fallback_quiz(user_prompt)
 
-    def _generate_with_openai(
-        self,
-        user_prompt: str,
-        best_template: Dict[str, Any],
-        all_templates: list
-    ) -> Dict[str, Any]:
+    def _generate_direct_from_gpt(self, user_prompt: str) -> Dict[str, Any]:
         """
-        Generate game using OpenAI to customize the template
+        Generate game directly from GPT without using any templates
 
         Args:
             user_prompt: User's game description
-            best_template: Best matching template
-            all_templates: All retrieved templates for context
 
         Returns:
             Generated game data
         """
-        # Create context from templates
-        template_context = self.retriever.get_template_context(all_templates)
-
-        # Create prompt for OpenAI
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS game developer. Your task is to customize game code and generate game data based on user requirements.
+            ("system", """You are an expert PixiJS v8 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
 
-You will receive:
-1. User's game description
-2. Relevant PixiJS game templates
+CRITICAL: Games must be FULLY IMPLEMENTED with:
+- Complete game mechanics (not simplified versions)
+- Detailed graphics (draw actual shapes for cars, bikes, ships, etc.)
+- Full physics if needed (gravity, velocity, collision)
+- Proper game loop with all features
+- UI elements (score, instructions, game over)
+- Input handling (keyboard, mouse, touch)
+- Win/lose conditions and restart
 
-Your task:
-1. Customize the template code to match the user's requirements
-2. Generate appropriate game data (questions, levels, objects, etc.)
-3. Ensure the code is complete and ready to run
-4. Return valid JSON with title, description, pixijs_code, and game_data
+Example of GOOD complexity (motorcycle game):
+- Physics: gravity, velocity X/Y, rotation, air control
+- Graphics: motorcycle with body, wheels, rider, flame exhaust
+- Mechanics: platforms, ramps, flip detection, landing angle checking
+- Features: combo system, score tracking, scrolling world
+- Polish: multiple platforms, smooth camera follow, wheel rotation
 
-Important:
-- Keep the core PixiJS structure from the template
-- Customize colors, text, mechanics to match the user's theme
-- Generate realistic game data appropriate to the game type
-- Ensure game_data is a valid JSON object
-- The code should reference GAME_DATA which will be injected at runtime"""),
-            ("user", """User Request: {user_prompt}
+BAD examples (too simple):
+- ❌ Single rectangle for a car
+- ❌ No collision detection
+- ❌ Missing game over logic
+- ❌ No restart functionality
 
-{template_context}
+GOOD examples (properly detailed):
+- ✅ Car with body, windows, wheels drawn separately
+- ✅ Complete collision with all obstacles
+- ✅ Full game flow: start → play → game over → restart
+- ✅ Score system and UI
 
-Generate a customized PixiJS game. Return ONLY valid JSON in this format:
+Code Structure Requirements:
+```javascript
+import {{ Application, Graphics, Text, Container }} from 'pixi.js';
+
+(async () => {{
+  const app = new Application();
+  await app.init({{ background: '#color', resizeTo: window, antialias: true }});
+  document.body.appendChild(app.canvas);
+
+  // 1. Game variables (score, gameOver, velocities, etc.)
+  // 2. Create all graphics using Graphics() - draw detailed shapes
+  // 3. Game functions (collision, spawn, reset, etc.)
+  // 4. Input handling (keyboard/mouse/touch)
+  // 5. Game loop with app.ticker.add()
+  // 6. All game logic (physics, scoring, win/lose)
+}})();
+```
+
+Make games FUN, COMPLETE, and DETAILED like a real indie game!"""),
+            ("user", """Create a COMPLETE PixiJS game for this request:
+
+"{user_prompt}"
+
+Requirements:
+- Must be FULLY playable from start to finish
+- Include detailed graphics (not just simple rectangles)
+- Implement complete game mechanics
+- Add score tracking and game over
+- Include instructions and restart
+- Make it fun and polished!
+
+Return ONLY valid JSON (no markdown, no extra text):
 {{
-    "title": "Game Title",
-    "description": "Brief description",
-    "pixijs_code": "// Complete PixiJS code here",
-    "game_data": {{
-        // Game-specific data (questions, levels, etc.)
-    }}
+    "title": "Descriptive Game Title",
+    "description": "What makes this game fun",
+    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Your complete game code\\n}})();",
+    "game_data": {{}}
 }}""")
         ])
 
         # Generate with OpenAI
         chain = prompt | self.llm
         response = chain.invoke({
-            "user_prompt": user_prompt,
-            "template_context": template_context
+            "user_prompt": user_prompt
         })
 
         # Parse response
@@ -147,14 +165,14 @@ Generate a customized PixiJS game. Return ONLY valid JSON in this format:
             return {
                 'title': result.get('title', 'Generated Game'),
                 'description': result.get('description', 'A PixiJS game'),
-                'pixijs_code': result.get('pixijs_code', best_template['code']),
+                'pixijs_code': result.get('pixijs_code', ''),
                 'game_data': result.get('game_data', {})
             }
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse OpenAI response: {str(e)}")
-            # Fallback to template
-            return self._generate_from_template(user_prompt, best_template)
+            print(f"Failed to parse GPT response: {str(e)}")
+            print(f"Response content: {response.content[:500]}")
+            raise
 
     def _generate_from_template(
         self,

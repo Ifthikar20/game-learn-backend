@@ -106,71 +106,217 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        #login-section {
+            max-width: 400px;
+            margin: 50px auto;
+            background: #34495e;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        #login-section input {
+            width: 100%;
+            margin: 10px 0;
+            display: block;
+        }
+        #app-section {
+            display: none;
+        }
+        .user-info {
+            text-align: right;
+            color: #95a5a6;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .logout-btn {
+            background: #e74c3c;
+            padding: 5px 15px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎮 PixiJS Game Viewer</h1>
-            <p>Generate and play RAG-powered games</p>
+        <!-- Login Section -->
+        <div id="login-section">
+            <div class="header">
+                <h1>🎮 PixiJS Game Viewer</h1>
+                <p>Login to generate and play games</p>
+            </div>
+            <input type="email" id="loginEmail" placeholder="Email" value="test@example.com">
+            <input type="password" id="loginPassword" placeholder="Password" value="testpass123">
+            <button onclick="login()" style="width: 100%; margin: 20px 0 0 0;">🔐 Login</button>
+            <div id="login-error" class="error" style="display:none; margin-top:10px;"></div>
+            <p style="text-align: center; font-size: 12px; color: #95a5a6; margin-top: 20px;">
+                Default: test@example.com / testpass123
+            </p>
         </div>
 
-        <div class="input-section">
-            <h3>✨ Generate New Game:</h3>
-            <textarea id="gamePrompt" placeholder="Describe the game you want to create... (e.g., 'Create a space shooter where the player shoots asteroids')"></textarea>
-            <button onclick="generateGame()">✨ Generate Game</button>
-            <div id="generation-status"></div>
+        <!-- App Section (shown after login) -->
+        <div id="app-section">
+            <div class="header">
+                <h1>🎮 PixiJS Game Viewer</h1>
+                <p>Generate and play RAG-powered games</p>
+                <div class="user-info">
+                    Logged in as: <span id="user-email"></span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>✨ Generate New Game:</h3>
+                <textarea id="gamePrompt" placeholder="Describe the game you want to create... (e.g., 'Create a space shooter where the player shoots asteroids')"></textarea>
+                <button onclick="generateGame()">✨ Generate Game</button>
+                <div id="generation-status"></div>
+            </div>
+
+            <div class="input-section">
+                <h3>🎮 Play Existing Game:</h3>
+                <input type="text" id="gameId" placeholder="Game ID (e.g., 9fae697b-cb90-4786-a1fc-a64a2e8aad28)">
+                <button onclick="loadGame()">🎮 Load Game</button>
+                <button onclick="listGames()">📋 List My Games</button>
+            </div>
+
+            <div id="game-list"></div>
+
+            <div id="game-info">
+                <h3 id="game-title"></h3>
+                <p id="game-description"></p>
+                <button onclick="playGame()">▶️ Play Game</button>
+            </div>
+
+            <div id="game-container"></div>
         </div>
-
-        <div class="input-section">
-            <h3>🎮 Play Existing Game:</h3>
-            <input type="text" id="gameId" placeholder="Game ID (e.g., 9fae697b-cb90-4786-a1fc-a64a2e8aad28)">
-            <button onclick="loadGame()">🎮 Load Game</button>
-            <button onclick="listGames()">📋 List My Games</button>
-        </div>
-
-        <div id="game-list"></div>
-
-        <div id="game-info">
-            <h3 id="game-title"></h3>
-            <p id="game-description"></p>
-            <button onclick="playGame()">▶️ Play Game</button>
-        </div>
-
-        <div id="game-container"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
     <script>
-        // Configuration - UPDATE THESE
+        // Configuration
         const API_URL = 'http://localhost:8000';
-        const TOKEN = 'YOUR_TOKEN_HERE'; // Paste your access token here
-        // To get a token: run 'python get_auth_token.py' in your backend
-
         let currentGameData = null;
 
-        // Check configuration on page load
+        // Token management (stored in localStorage - automatic!)
+        function getToken() {
+            return localStorage.getItem('game_viewer_token');
+        }
+
+        function setToken(token) {
+            localStorage.setItem('game_viewer_token', token);
+        }
+
+        function getUserEmail() {
+            return localStorage.getItem('game_viewer_email');
+        }
+
+        function setUserEmail(email) {
+            localStorage.setItem('game_viewer_email', email);
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('game_viewer_token');
+            localStorage.removeItem('game_viewer_email');
+        }
+
+        // Check if user is logged in on page load
         window.addEventListener('DOMContentLoaded', () => {
-            if (TOKEN === 'YOUR_TOKEN_HERE') {
-                alert('⚠️ Please configure your authentication token!\n\n' +
-                      '1. Run: python get_auth_token.py\n' +
-                      '2. Copy the access token\n' +
-                      '3. Update TOKEN in this file\n' +
-                      '4. Refresh the page');
+            const token = getToken();
+            if (token) {
+                // Show app section
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                document.getElementById('user-email').textContent = getUserEmail() || 'Unknown';
+            } else {
+                // Show login section
+                document.getElementById('login-section').style.display = 'block';
+                document.getElementById('app-section').style.display = 'none';
             }
+        });
+
+        // Login function - gets token automatically!
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const errorDiv = document.getElementById('login-error');
+
+            if (!email || !password) {
+                errorDiv.textContent = 'Please enter email and password';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/token/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Invalid email or password');
+                    }
+                    throw new Error('Login failed. Is the backend server running on port 8000?');
+                }
+
+                const result = await response.json();
+
+                if (result.access) {
+                    // Store token and email automatically
+                    setToken(result.access);
+                    setUserEmail(email);
+
+                    // Show app section
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('app-section').style.display = 'block';
+                    document.getElementById('user-email').textContent = email;
+
+                    errorDiv.style.display = 'none';
+                } else {
+                    throw new Error('Login failed - no token received');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            clearAuth();
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('app-section').style.display = 'none';
+            document.getElementById('game-container').innerHTML = '';
+        }
+
+        // Enter key to login
+        document.addEventListener('DOMContentLoaded', () => {
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
+
+            emailInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+
+            passwordInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
         });
 
         async function listGames() {
             try {
                 const response = await fetch(`${API_URL}/api/games/`, {
                     headers: {
-                        'Authorization': `Bearer ${TOKEN}`
+                        'Authorization': `Bearer ${getToken()}`
                     }
                 });
 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        throw new Error('Authentication failed. Please update your token.');
+                        logout();
+                        throw new Error('Session expired. Please login again.');
                     } else if (response.status === 0 || !response.status) {
                         throw new Error('Cannot connect to backend. Is the server running on port 8000?');
                     }
@@ -211,11 +357,7 @@
                 }
             } catch (error) {
                 console.error('Error listing games:', error);
-                alert('❌ Error listing games:\n\n' + error.message +
-                      '\n\nCheck:\n' +
-                      '1. Backend server running: python manage.py runserver\n' +
-                      '2. Token is valid (run: python get_auth_token.py)\n' +
-                      '3. Browser console (F12) for more details');
+                alert('❌ Error listing games:\n\n' + error.message);
             }
         }
 
@@ -231,7 +373,7 @@
                 console.log('Loading game:', gameId);
                 const response = await fetch(`${API_URL}/api/games/${gameId}/play/`, {
                     headers: {
-                        'Authorization': `Bearer ${TOKEN}`
+                        'Authorization': `Bearer ${getToken()}`
                     }
                 });
 
@@ -239,7 +381,8 @@
 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        throw new Error('Authentication failed. Token may be expired. Run: python get_auth_token.py');
+                        logout();
+                        throw new Error('Session expired. Please login again.');
                     } else if (response.status === 404) {
                         throw new Error('Game not found. Check the game ID is correct.');
                     } else if (response.status === 0 || !response.status) {
@@ -264,8 +407,7 @@
                 }
             } catch (error) {
                 console.error('Error loading game:', error);
-                alert('❌ Error loading game:\n\n' + error.message +
-                      '\n\nCheck browser console (F12) for details');
+                alert('❌ Error loading game:\n\n' + error.message);
             }
         }
 
@@ -287,7 +429,7 @@
                 const response = await fetch(`${API_URL}/api/games/generate/`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${TOKEN}`,
+                        'Authorization': `Bearer ${getToken()}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ prompt: prompt })
@@ -297,7 +439,8 @@
 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        throw new Error('Authentication failed. Run: python get_auth_token.py');
+                        logout();
+                        throw new Error('Session expired. Please login again.');
                     } else if (response.status === 0 || !response.status) {
                         throw new Error('Cannot connect to backend. Is the server running?');
                     }

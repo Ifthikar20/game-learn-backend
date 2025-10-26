@@ -528,6 +528,227 @@ for (let i = 0; i < 3; i++) {
         )
         self.stdout.write(self.style.SUCCESS('✓ Added Clicker template'))
 
+        # Template 5: Flying/Flappy Bird Style Game
+        flying_template = """
+// Flying/Flappy Bird Style Game
+const app = new PIXI.Application({
+    width: 800,
+    height: 600,
+    backgroundColor: 0x87CEEB
+});
+document.body.appendChild(app.view);
+
+let score = 0;
+let highScore = 0;
+let gameOver = false;
+let gameStarted = false;
+let playerVelocityY = 0;
+const gravity = 0.5;
+const jumpPower = -10;
+const scrollSpeed = 5;
+
+// Create player
+const player = new PIXI.Graphics();
+player.beginFill(0xFF0000);
+player.drawRect(0, 0, 40, 40);
+player.endFill();
+player.x = 100;
+player.y = 300;
+app.stage.addChild(player);
+
+// Obstacles container
+const obstacles = new PIXI.Container();
+app.stage.addChild(obstacles);
+
+// Score text
+const scoreText = new PIXI.Text('Score: 0', {
+    fontFamily: 'Arial',
+    fontSize: 32,
+    fill: 0xffffff,
+    fontWeight: 'bold',
+    stroke: { color: 0x000000, width: 4 }
+});
+scoreText.position.set(20, 20);
+app.stage.addChild(scoreText);
+
+// High score text
+const highScoreText = new PIXI.Text('High Score: 0', {
+    fontFamily: 'Arial',
+    fontSize: 24,
+    fill: 0xffffff,
+    fontWeight: 'bold',
+    stroke: { color: 0x000000, width: 4 }
+});
+highScoreText.position.set(20, 60);
+app.stage.addChild(highScoreText);
+
+// Instructions
+const instructions = new PIXI.Text('Press SPACE or Click to Fly!\\n\\nAvoid the obstacles!', {
+    fontFamily: 'Arial',
+    fontSize: 36,
+    fill: 0xffffff,
+    fontWeight: 'bold',
+    stroke: { color: 0x000000, width: 5 },
+    align: 'center'
+});
+instructions.anchor.set(0.5);
+instructions.position.set(400, 300);
+app.stage.addChild(instructions);
+
+// Game over text
+const gameOverText = new PIXI.Text('GAME OVER!\\n\\nPress SPACE or Click to Restart', {
+    fontFamily: 'Arial',
+    fontSize: 36,
+    fill: 0xFF0000,
+    fontWeight: 'bold',
+    stroke: { color: 0x000000, width: 5 },
+    align: 'center'
+});
+gameOverText.anchor.set(0.5);
+gameOverText.position.set(400, 300);
+gameOverText.visible = false;
+app.stage.addChild(gameOverText);
+
+// Create obstacle
+function createObstacle() {
+    const gap = 200;
+    const minHeight = 50;
+    const maxHeight = app.screen.height - gap - 100;
+    const topHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+
+    const topObstacle = new PIXI.Graphics();
+    topObstacle.beginFill(0x228B22);
+    topObstacle.drawRect(0, 0, 60, topHeight);
+    topObstacle.endFill();
+    topObstacle.x = app.screen.width;
+    topObstacle.y = 0;
+
+    const bottomObstacle = new PIXI.Graphics();
+    const bottomHeight = app.screen.height - topHeight - gap;
+    bottomObstacle.beginFill(0x228B22);
+    bottomObstacle.drawRect(0, 0, 60, bottomHeight);
+    bottomObstacle.endFill();
+    bottomObstacle.x = app.screen.width;
+    bottomObstacle.y = topHeight + gap;
+
+    const obstacleGroup = new PIXI.Container();
+    obstacleGroup.addChild(topObstacle);
+    obstacleGroup.addChild(bottomObstacle);
+    obstacleGroup.scored = false;
+
+    obstacles.addChild(obstacleGroup);
+}
+
+let obstacleTimer = 0;
+const obstacleInterval = 120;
+
+function checkCollision(player, obstacle) {
+    const playerBounds = player.getBounds();
+    const obstacleBounds = obstacle.getBounds();
+    return playerBounds.x < obstacleBounds.x + obstacleBounds.width &&
+           playerBounds.x + playerBounds.width > obstacleBounds.x &&
+           playerBounds.y < obstacleBounds.y + obstacleBounds.height &&
+           playerBounds.y + playerBounds.height > obstacleBounds.y;
+}
+
+function resetGame() {
+    gameOver = false;
+    gameStarted = true;
+    score = 0;
+    playerVelocityY = 0;
+    player.y = 300;
+    obstacles.removeChildren();
+    scoreText.text = 'Score: 0';
+    gameOverText.visible = false;
+    instructions.visible = false;
+}
+
+function jump() {
+    if (gameOver) {
+        resetGame();
+    } else if (!gameStarted) {
+        gameStarted = true;
+        instructions.visible = false;
+    } else {
+        playerVelocityY = jumpPower;
+    }
+}
+
+// Input handling
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        e.preventDefault();
+        jump();
+    }
+});
+
+app.canvas.addEventListener('click', () => jump());
+app.canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    jump();
+});
+
+// Game loop
+app.ticker.add(() => {
+    if (!gameStarted || gameOver) return;
+
+    playerVelocityY += gravity;
+    player.y += playerVelocityY;
+    player.rotation = Math.min(Math.max(playerVelocityY * 0.05, -0.5), 0.5);
+
+    if (player.y < 0 || player.y + player.height > app.screen.height) {
+        gameOver = true;
+        gameOverText.visible = true;
+        if (score > highScore) {
+            highScore = score;
+            highScoreText.text = `High Score: ${highScore}`;
+        }
+    }
+
+    obstacleTimer++;
+    if (obstacleTimer > obstacleInterval) {
+        createObstacle();
+        obstacleTimer = 0;
+    }
+
+    for (let i = obstacles.children.length - 1; i >= 0; i--) {
+        const obstacleGroup = obstacles.children[i];
+        obstacleGroup.x -= scrollSpeed;
+
+        for (let j = 0; j < obstacleGroup.children.length; j++) {
+            if (checkCollision(player, obstacleGroup.children[j])) {
+                gameOver = true;
+                gameOverText.visible = true;
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreText.text = `High Score: ${highScore}`;
+                }
+            }
+        }
+
+        if (!obstacleGroup.scored && obstacleGroup.x + 60 < player.x) {
+            obstacleGroup.scored = true;
+            score++;
+            scoreText.text = `Score: ${score}`;
+        }
+
+        if (obstacleGroup.x + 60 < 0) {
+            obstacles.removeChild(obstacleGroup);
+        }
+    }
+});
+"""
+
+        chroma.add_template(
+            template_id='flying_01',
+            name='Flying/Flappy Bird Game',
+            description='Side-scrolling flying game where player navigates through obstacles by controlling vertical movement',
+            code=flying_template,
+            game_type='flying',
+            tags=['flying', 'flappy', 'bird', 'obstacles', 'endless', 'runner', 'scrolling', 'car', 'plane']
+        )
+        self.stdout.write(self.style.SUCCESS('✓ Added Flying game template'))
+
         # Show summary
         count = chroma.count_templates()
         self.stdout.write(self.style.SUCCESS(f'\n✓ Successfully populated {count} templates'))

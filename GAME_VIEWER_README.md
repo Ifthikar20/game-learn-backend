@@ -1,75 +1,90 @@
-# Game Viewer Setup & Usage
+# Game Viewer - Quick Start Guide
 
-## Quick Start
+## Setup (One-time)
 
-### 1. Setup (One-time)
+### 1. Install & Configure
 ```bash
 # Add your OpenAI API key
 cp .env.example .env
-# Edit .env: OPENAI_API_KEY=sk-your-key-here
+# Edit .env and add: OPENAI_API_KEY=sk-your-key-here
 
 # Activate virtual environment and setup database
 source venv/bin/activate
 python manage.py migrate
 python manage.py populate_templates
-
-# Get authentication token
-python get_auth_token.py
-# Copy the ACCESS TOKEN
 ```
 
-### 2. Update game_viewer.html
-```javascript
-// Line 114 - Replace with your token from step 1
-const TOKEN = 'your-actual-token-here';
+### 2. Create a User Account
+```bash
+# Run this to create test@example.com account
+python get_auth_token.py
+# Just press Enter to use defaults (test@example.com / testpass123)
 ```
 
 ### 3. Run Servers
 ```bash
-# Terminal 1 - Backend
+# Terminal 1 - Backend API
 python manage.py runserver
 
 # Terminal 2 - Game Viewer
 python -m http.server 8080
 ```
 
-### 4. Use It!
-Open browser: `http://localhost:8080/game_viewer.html`
+### 4. Open and Login
+Open browser: **`http://localhost:8080/game_viewer.html`**
 
-**Features:**
-- ✨ **Generate games** - Enter a prompt and click "Generate Game"
-- 📋 **List games** - See all your generated games
-- 🎮 **Play games** - Load and play any game
+Login with:
+- Email: `test@example.com`
+- Password: `testpass123`
 
-## What You Can Do
+**That's it!** No need to copy/paste tokens - it handles authentication automatically!
 
-### Generate a New Game
-1. Enter a prompt like: "Create a space shooter with asteroids"
+---
+
+## How to Use
+
+### Generate a Game
+1. Type a description: *"Create a space shooter where I dodge asteroids"*
 2. Click **"✨ Generate Game"**
-3. Wait 10-30 seconds (RAG + GPT takes time)
-4. Game appears in your list automatically
+3. Wait 10-30 seconds
+4. Game auto-loads when ready
+5. Click **"▶️ Play Game"**
 
-### Play an Existing Game
+### Play Existing Games
 1. Click **"📋 List My Games"**
-2. Click on a game to select it
-3. Click **"🎮 Load Game"**
-4. Click **"▶️ Play Game"**
+2. Click on any game
+3. Click **"▶️ Play Game"**
+
+---
+
+## Features
+
+✅ **Auto Login** - Enter email/password once, token saved automatically
+✅ **Generate Games** - Describe what you want, RAG + GPT creates it
+✅ **Play Games** - Load and play directly in the browser
+✅ **Session Management** - Stay logged in, auto-logout when token expires
+
+---
 
 ## Troubleshooting
 
-| Error | Solution |
-|-------|----------|
-| "Configure token" warning | Run `python get_auth_token.py` and update game_viewer.html |
-| "Cannot connect to backend" | Start backend: `python manage.py runserver` |
-| "401 Unauthorized" | Token expired - run `python get_auth_token.py` again |
-| CORS errors | Use `http://localhost:8080/game_viewer.html` (not `file://`) |
+| Problem | Solution |
+|---------|----------|
+| "Cannot connect to backend" | Start server: `python manage.py runserver` |
+| "Invalid email or password" | Run `python get_auth_token.py` to create account |
+| "Session expired" | Just login again - token lasts 60 minutes |
+| Blank page | Use `http://localhost:8080/game_viewer.html` not `file://` |
+
+---
 
 ## How It Works
 
 ```
-User enters prompt → game_viewer.html → Django API → RAG (ChromaDB) → OpenAI GPT
-                                                                            ↓
-User plays game ← game_viewer.html ← Database ← Generated PixiJS code ← GPT
+You login → Token saved in browser automatically
+    ↓
+Type game prompt → RAG finds best templates → GPT generates code
+    ↓
+Game created → Auto-loads → Play!
 ```
 
-You can now generate and play games entirely from the web interface!
+**No token copy/paste needed - it's all automatic!** 🎉
