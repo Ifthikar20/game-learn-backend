@@ -29,11 +29,11 @@ class PixiJSGenerator:
 
         if self.use_openai:
             self.llm = ChatOpenAI(
-                model="gpt-3.5-turbo",
-                temperature=0.9,  # Higher creativity
+                model="gpt-4",  # Use GPT-4 for better creativity
+                temperature=0.9,
                 api_key=getattr(settings, 'OPENAI_API_KEY')
             )
-            print(f"✓ OpenAI enabled for game generation")
+            print(f"✓ OpenAI GPT-4 enabled for game generation")
 
     def generate_game(self, user_prompt: str) -> Dict[str, Any]:
         """
@@ -98,53 +98,84 @@ class PixiJSGenerator:
 
         # Create prompt for OpenAI
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert PixiJS game developer. You MUST create COMPLETELY UNIQUE games for EACH request.
+            ("system", """You are an expert PixiJS game developer. You MUST create COMPLETELY UNIQUE games with UNIQUE MECHANICS for each request.
 
-🚨 CRITICAL RULES:
-1. ANALYZE the user's request carefully - what game type do they want?
-2. If they say "flying car", "space shooter", "platformer" - make THAT type of game, NOT a quiz!
-3. DO NOT default to quiz games unless explicitly requested
-4. Create BRAND NEW code from scratch based on the template mechanics
-5. Change EVERYTHING: colors, shapes, text, UI, gameplay feel
-6. Make it look and play completely different from any previous game
+🚨 CRITICAL: DO NOT just recolor templates! Create NEW game mechanics!
 
-For different game types:
-- FLYING/FLAPPY games: obstacles to avoid, tap to fly, scrolling
-- QUIZ games: only if user asks for quiz/questions/trivia
-- PLATFORMER games: jumping, platforms, gravity
-- SHOOTER games: bullets, enemies, aiming
-- PUZZLE games: matching, grid-based logic
+Examples of what to create:
 
-Visual customization (REQUIRED):
-- Change ALL colors to match theme
-- Draw custom shapes (cars, spaceships, characters)
-- Update ALL text and labels
-- Theme-appropriate backgrounds
-- Unique UI styling
+"car racing game" → 3-lane racing game:
+- 3 vertical lanes
+- Player car (can move left/right between lanes)
+- Enemy cars scrolling down from top
+- Collision detection
+- Speed increases over time
+- Score for cars passed
 
-Use PixiJS v8 API:
-- PIXI.Graphics() for shapes
-- PIXI.Text() for text
-- PIXI.Container() for grouping
-- app.ticker.add() for game loop"""),
-            ("user", """User Request: {user_prompt}
+"motorcycle game" → Physics-based stunt game:
+- Motorcycle with realistic physics
+- Platforms and ramps
+- Rotation/flip mechanics in air
+- Landing angle matters (crash if bad angle)
+- Combo system for tricks
+- Scrolling world
 
-Available Templates for Reference:
+"space shooter" → Top-down shooter:
+- Player spaceship
+- Enemies spawning
+- Bullet shooting
+- Enemy AI movement
+- Power-ups
+- Explosion effects
+
+"quiz game" → Question-based:
+- Multiple choice questions
+- Answer buttons
+- Score tracking
+- Next question flow
+
+RULES:
+1. Analyze the request and identify CORE MECHANICS needed
+2. Create those specific mechanics from scratch
+3. DO NOT use quiz template for non-quiz requests
+4. Change ALL colors, shapes, and visual style
+5. Use modern PixiJS v8 API properly
+6. Make it FULLY PLAYABLE
+
+PixiJS v8 Structure:
+```javascript
+import {{ Application, Graphics, Text, Container }} from 'pixi.js';
+
+(async () => {{
+  const app = new Application();
+  await app.init({{ background: '#color', resizeTo: window, antialias: true }});
+  document.body.appendChild(app.canvas);
+
+  // Your game code here
+  // Use Graphics, Text, Container
+  // Use app.ticker.add() for game loop
+}})();
+```"""),
+            ("user", """User Request: "{user_prompt}"
+
+Available Templates (USE ONLY AS INSPIRATION for mechanics):
 {template_context}
 
-Task: Create a UNIQUE game that matches the user's request. Do NOT just copy the template!
+Task: Create a COMPLETELY NEW game with mechanics that match the request.
 
-If user says "flying car" → Create a FLYING GAME with car theme
-If user says "quiz" → Create a QUIZ GAME
-If user says "shooter" → Create a SHOOTER GAME
+If "racing" → Create lane-based racing mechanics
+If "motorcycle/bike" → Create physics-based stunt mechanics
+If "shooter" → Create shooting and enemy mechanics
+If "quiz" → Create question/answer mechanics
+If "platformer" → Create jump/platform mechanics
 
-Return ONLY valid JSON:
-{{
+Return ONLY valid JSON (no markdown):
+{{{{
     "title": "Descriptive Title",
-    "description": "What the game is about",
-    "pixijs_code": "// Complete unique PixiJS code",
-    "game_data": {{}}
-}}""")
+    "description": "What makes this game unique",
+    "pixijs_code": "import {{ Application, Graphics, Text, Container }} from 'pixi.js';\\n\\n(async () => {{\\n  // Complete game code\\n}})();",
+    "game_data": {{{{}}}}
+}}}}""")
         ])
 
         # Generate with OpenAI
