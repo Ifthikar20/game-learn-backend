@@ -118,14 +118,16 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',      # Vite dev server (gamify-study-pane)
     'http://localhost:3000',      # React dev server
-    'http://localhost:8080',      # Alternative frontend
+    'http://localhost:8080',      # Game viewer HTTP server
     'http://127.0.0.1:5173',      # Localhost variant
     'http://127.0.0.1:3000',
     'http://127.0.0.1:8080',
 ]
 
+# Allow null origin for file:// protocol during development (for game_viewer.html)
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all origins in DEBUG mode for easier testing
+
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False  # Security: only allow specific origins
 
 # OpenAI (for MVP, we'll use a simple mock first)
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')

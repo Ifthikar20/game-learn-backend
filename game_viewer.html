@@ -112,8 +112,20 @@
         // Configuration - UPDATE THESE
         const API_URL = 'http://localhost:8000';
         const TOKEN = 'YOUR_TOKEN_HERE'; // Paste your access token here
+        // To get a token: run 'python get_auth_token.py' in your backend
 
         let currentGameData = null;
+
+        // Check configuration on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (TOKEN === 'YOUR_TOKEN_HERE') {
+                alert('⚠️ Please configure your authentication token!\n\n' +
+                      '1. Run: python get_auth_token.py\n' +
+                      '2. Copy the access token\n' +
+                      '3. Update TOKEN in this file\n' +
+                      '4. Refresh the page');
+            }
+        });
 
         async function listGames() {
             try {
@@ -123,18 +135,38 @@
                     }
                 });
 
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication failed. Please update your token.');
+                    } else if (response.status === 0 || !response.status) {
+                        throw new Error('Cannot connect to backend. Is the server running on port 8000?');
+                    }
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
                     const gameListDiv = document.getElementById('game-list');
+
+                    if (result.data.length === 0) {
+                        gameListDiv.innerHTML = '<h3>Your Games:</h3><p>No games yet. Generate one first!</p>';
+                        return;
+                    }
+
                     gameListDiv.innerHTML = '<h3>Your Games:</h3>';
 
                     result.data.forEach(game => {
                         const gameDiv = document.createElement('div');
                         gameDiv.className = 'game-list';
+
+                        const statusEmoji = game.status === 'ready' ? '✅' :
+                                          game.status === 'generating' ? '⏳' : '❌';
+
                         gameDiv.innerHTML = `
-                            <strong>${game.title}</strong><br>
+                            ${statusEmoji} <strong>${game.title}</strong><br>
                             <small>ID: ${game.id}</small><br>
+                            <small>Status: ${game.status}</small><br>
                             <small>Created: ${new Date(game.created_at).toLocaleString()}</small>
                         `;
                         gameDiv.onclick = () => {
@@ -145,7 +177,12 @@
                     });
                 }
             } catch (error) {
-                alert('Error listing games: ' + error.message);
+                console.error('Error listing games:', error);
+                alert('❌ Error listing games:\n\n' + error.message +
+                      '\n\nCheck:\n' +
+                      '1. Backend server running: python manage.py runserver\n' +
+                      '2. Token is valid (run: python get_auth_token.py)\n' +
+                      '3. Browser console (F12) for more details');
             }
         }
 
@@ -158,13 +195,27 @@
             }
 
             try {
+                console.log('Loading game:', gameId);
                 const response = await fetch(`${API_URL}/api/games/${gameId}/play/`, {
                     headers: {
                         'Authorization': `Bearer ${TOKEN}`
                     }
                 });
 
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication failed. Token may be expired. Run: python get_auth_token.py');
+                    } else if (response.status === 404) {
+                        throw new Error('Game not found. Check the game ID is correct.');
+                    } else if (response.status === 0 || !response.status) {
+                        throw new Error('Cannot connect to backend. Is the server running?');
+                    }
+                }
+
                 const result = await response.json();
+                console.log('Response data:', result);
 
                 if (result.success) {
                     currentGameData = result.data;
@@ -176,10 +227,12 @@
 
                     alert('✅ Game loaded! Click "Play Game" to start.');
                 } else {
-                    alert('Error: ' + (result.message || 'Failed to load game'));
+                    alert('❌ Error: ' + (result.message || 'Failed to load game'));
                 }
             } catch (error) {
-                alert('Error loading game: ' + error.message);
+                console.error('Error loading game:', error);
+                alert('❌ Error loading game:\n\n' + error.message +
+                      '\n\nCheck browser console (F12) for details');
             }
         }
 
