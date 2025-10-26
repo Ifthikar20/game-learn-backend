@@ -153,8 +153,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
         # Generate with OpenAI
         chain = prompt | self.llm
         response = chain.invoke({
-            "user_prompt": user_prompt,
-            "template_context": template_context
+            "user_prompt": user_prompt
         })
 
         # Parse response
@@ -173,14 +172,14 @@ Return ONLY valid JSON (no markdown, no code blocks):
             return {
                 'title': result.get('title', 'Generated Game'),
                 'description': result.get('description', 'A PixiJS game'),
-                'pixijs_code': result.get('pixijs_code', best_template['code']),
+                'pixijs_code': result.get('pixijs_code', ''),
                 'game_data': result.get('game_data', {})
             }
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse OpenAI response: {str(e)}")
-            # Fallback to template
-            return self._generate_from_template(user_prompt, best_template)
+            print(f"Failed to parse GPT response: {str(e)}")
+            print(f"Response content: {response.content[:500]}")
+            raise
 
     def _generate_from_template(
         self,
