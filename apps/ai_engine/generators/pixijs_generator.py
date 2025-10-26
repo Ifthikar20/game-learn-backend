@@ -37,9 +37,9 @@ class PixiJSGenerator:
 
     def generate_game(self, user_prompt: str) -> Dict[str, Any]:
         """
-        Generate a complete PixiJS game based on user prompt
+        Generate a complete PixiJS game based on user prompt with retry logic
 
-        NEW APPROACH: Direct GPT generation from scratch (no RAG templates)
+        NEW APPROACH: Direct GPT generation with validation and retry
 
         Args:
             user_prompt: User's description of desired game
@@ -48,26 +48,120 @@ class PixiJSGenerator:
             Dictionary containing title, description, pixijs_code, and game_data
         """
         if self.use_openai:
-            try:
-                print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
-                print(f"🚀 Creating from scratch (no templates)")
-                result = self._generate_direct_from_gpt(user_prompt)
-                print(f"✅ Generated game: {result.get('title', 'Unknown')}")
-                return result
-            except Exception as e:
-                print(f"❌ GPT generation failed: {str(e)}")
-                print(f"⚠️  Falling back to simple template")
-                return self._generate_fallback_quiz(user_prompt)
+            print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
+            print(f"🚀 Creating from scratch with validation and retry")
+
+            max_attempts = 3
+            previous_errors = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    print(f"📝 Attempt {attempt}/{max_attempts}")
+                    result = self._generate_direct_from_gpt(
+                        user_prompt,
+                        attempt=attempt,
+                        previous_errors=previous_errors
+                    )
+
+                    # Validate the generated code
+                    validation_errors = self._validate_game_code(result['pixijs_code'])
+
+                    if not validation_errors:
+                        print(f"✅ Generated valid game: {result.get('title', 'Unknown')}")
+                        return result
+                    else:
+                        print(f"⚠️  Validation failed on attempt {attempt}:")
+                        for error in validation_errors:
+                            print(f"   - {error}")
+
+                        if attempt < max_attempts:
+                            print(f"🔄 Retrying with error feedback...")
+                            # Store errors for next attempt
+                            previous_errors = validation_errors
+                        else:
+                            print(f"❌ Max attempts reached, falling back to template")
+                            return self._generate_fallback_quiz(user_prompt)
+
+                except Exception as e:
+                    print(f"❌ Generation attempt {attempt} failed: {str(e)}")
+                    if attempt == max_attempts:
+                        print(f"⚠️  All attempts failed, falling back to simple template")
+                        return self._generate_fallback_quiz(user_prompt)
+                    else:
+                        # On retry, pass the exception as an error
+                        previous_errors = [f"Exception: {str(e)}"]
         else:
             print(f"⚠️  OpenAI disabled, using fallback")
             return self._generate_fallback_quiz(user_prompt)
 
-    def _generate_direct_from_gpt(self, user_prompt: str) -> Dict[str, Any]:
+    def _validate_game_code(self, code: str) -> list:
+        """
+        Validate the generated JavaScript code for common issues
+
+        Args:
+            code: JavaScript code to validate
+
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        errors = []
+
+        # Basic structure checks
+        if not code or len(code) < 100:
+            errors.append(f"Code too short ({len(code)} chars) - needs more content")
+
+        if 'PIXI.Application' not in code:
+            errors.append("Missing PIXI.Application initialization")
+
+        if 'new PIXI.Application' not in code:
+            errors.append("PIXI.Application not properly instantiated with 'new'")
+
+        if 'game-container' not in code and 'document.body' not in code:
+            errors.append("Missing canvas append logic (should append to game-container or body)")
+
+        if 'app.ticker.add' not in code:
+            errors.append("Missing game loop (app.ticker.add)")
+
+        if '(async () =>' not in code and '(async()=>' not in code:
+            errors.append("Code not wrapped in async IIFE")
+
+        # Check for balanced braces
+        open_braces = code.count('{')
+        close_braces = code.count('}')
+        if open_braces != close_braces:
+            errors.append(f"Unbalanced braces: {open_braces} open, {close_braces} close")
+
+        # Check for balanced parentheses
+        open_parens = code.count('(')
+        close_parens = code.count(')')
+        if open_parens != close_parens:
+            errors.append(f"Unbalanced parentheses: {open_parens} open, {close_parens} close")
+
+        # Check for common syntax errors
+        if '})();' not in code:
+            errors.append("Missing IIFE closing: })();")
+
+        # Check for required game elements
+        if 'PIXI.Graphics' not in code and 'PIXI.Sprite' not in code:
+            errors.append("No game graphics created (missing PIXI.Graphics or PIXI.Sprite)")
+
+        if 'PIXI.Text' not in code:
+            errors.append("No UI text elements (missing PIXI.Text for score/instructions)")
+
+        # Check for empty or placeholder code
+        if '// Your complete game code' in code or '...' in code:
+            errors.append("Code contains placeholders - needs actual implementation")
+
+        return errors
+
+    def _generate_direct_from_gpt(self, user_prompt: str, attempt: int = 1, previous_errors: list = None) -> Dict[str, Any]:
         """
         Generate game directly from GPT without using any templates
 
         Args:
             user_prompt: User's game description
+            attempt: Current attempt number
+            previous_errors: List of validation errors from previous attempt
 
         Returns:
             Generated game data
@@ -178,11 +272,19 @@ REQUIREMENTS:
 ✅ Restart functionality
 ✅ Smooth animations
 
-Make games FUN, COMPLETE, and DETAILED!"""),
-            ("user", """Create a COMPLETE PixiJS game for this request:
+Make games FUN, COMPLETE, and DETAILED!""")
+        ])
 
-"{user_prompt}"
+        # Build user message with optional error feedback
+        user_message_parts = [f"Create a COMPLETE PixiJS game for this request:\n\n\"{user_prompt}\"\n"]
 
+        if previous_errors and len(previous_errors) > 0:
+            user_message_parts.append(f"\n⚠️ PREVIOUS ATTEMPT HAD THESE ERRORS - FIX THEM:\n")
+            for i, error in enumerate(previous_errors, 1):
+                user_message_parts.append(f"{i}. {error}\n")
+            user_message_parts.append("\nMake sure to fix ALL the errors listed above!\n")
+
+        user_message_parts.append("""
 CRITICAL INSTRUCTIONS:
 1. Follow the EXACT structure from the system template
 2. Include ALL 8 sections: Setup, Game State, Graphics, UI, Functions, Input, Game Loop, Start
@@ -191,16 +293,6 @@ CRITICAL INSTRUCTIONS:
 5. Include complete game loop with proper physics
 6. Add restart functionality (press R to restart)
 7. Include game over screen with instructions
-
-STRUCTURE YOUR CODE LIKE THIS:
-- Section 1: App setup + canvas append
-- Section 2: gameState object with all variables
-- Section 3: Create and draw all graphics objects
-- Section 4: UI elements (score, instructions, game over)
-- Section 5: Game functions (reset, checkCollision, etc.)
-- Section 6: Input handlers (keyboard/mouse)
-- Section 7: Game loop with app.ticker.add()
-- Section 8: Call resetGame() to start
 
 Return your response in this EXACT format:
 
@@ -211,21 +303,28 @@ DESCRIPTION:
 [One-line description of what makes it fun]
 
 CODE_START
-(async () => {{
+(async () => {
   // ===== 1. SETUP =====
-  const app = new PIXI.Application({{...}});
-  // ... rest of structured code following the 8-section template
-}})();
+  const app = new PIXI.Application({width: 800, height: 600, backgroundColor: 0x1099bb});
+  const container = document.getElementById('game-container');
+  if (container) { container.appendChild(app.view); } else { document.body.appendChild(app.view); }
+
+  // ... rest of complete code following the 8-section template
+})();
 CODE_END
 
-IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeholders!""")
-        ])
+IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeholders!
+""")
+
+        user_message = "".join(user_message_parts)
+
+        # Add user message to prompt
+        messages = list(prompt.messages) + [("user", user_message)]
+        final_prompt = ChatPromptTemplate.from_messages(messages)
 
         # Generate with OpenAI
-        chain = prompt | self.llm
-        response = chain.invoke({
-            "user_prompt": user_prompt
-        })
+        chain = final_prompt | self.llm
+        response = chain.invoke({"user_prompt": user_prompt})
 
         # Parse response using delimiter format
         try:
