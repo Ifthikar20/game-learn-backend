@@ -149,13 +149,22 @@ Requirements:
 - DO NOT use import statements - use global PIXI object
 - Append canvas to game-container div, not document.body
 
-Return ONLY valid JSON (no markdown, no extra text):
-{{
-    "title": "Descriptive Game Title",
-    "description": "What makes this game fun",
-    "pixijs_code": "(async () => {{\\n  const app = new PIXI.Application({{ width: 800, height: 600 }});\\n  document.getElementById('game-container').appendChild(app.view);\\n  // Your complete game code\\n}})();",
-    "game_data": {{}}
-}}""")
+Return your response in this EXACT format (no JSON, use delimiters):
+
+TITLE:
+Descriptive Game Title
+
+DESCRIPTION:
+What makes this game fun and engaging
+
+CODE_START
+(async () => {{
+  const app = new PIXI.Application({{ width: 800, height: 600, backgroundColor: 0x1099bb, antialias: true }});
+  document.getElementById('game-container').appendChild(app.view);
+
+  // Your complete game code here
+}})();
+CODE_END""")
         ])
 
         # Generate with OpenAI
@@ -164,27 +173,34 @@ Return ONLY valid JSON (no markdown, no extra text):
             "user_prompt": user_prompt
         })
 
-        # Parse response
+        # Parse response using delimiter format
         try:
-            # Extract JSON from response (handle markdown code blocks)
             content = response.content.strip()
-            if content.startswith('```'):
-                # Remove markdown code block markers
-                content = content.split('```')[1]
-                if content.startswith('json'):
-                    content = content[4:]
-                content = content.strip()
 
-            result = json.loads(content)
+            # Extract title (between TITLE: and DESCRIPTION:)
+            title_match = content.find('TITLE:')
+            desc_match = content.find('DESCRIPTION:')
+            code_start = content.find('CODE_START')
+            code_end = content.find('CODE_END')
+
+            if title_match == -1 or desc_match == -1 or code_start == -1 or code_end == -1:
+                raise ValueError("Response doesn't match expected delimiter format")
+
+            # Extract each section
+            title = content[title_match + 6:desc_match].strip()
+            description = content[desc_match + 12:code_start].strip()
+            pixijs_code = content[code_start + 10:code_end].strip()
+
+            print(f"✓ Successfully parsed game: {title}")
 
             return {
-                'title': result.get('title', 'Generated Game'),
-                'description': result.get('description', 'A PixiJS game'),
-                'pixijs_code': result.get('pixijs_code', ''),
-                'game_data': result.get('game_data', {})
+                'title': title,
+                'description': description,
+                'pixijs_code': pixijs_code,
+                'game_data': {}
             }
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"Failed to parse GPT response: {str(e)}")
             print(f"Response content: {response.content[:500]}")
             raise
