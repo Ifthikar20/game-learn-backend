@@ -36,10 +36,15 @@ def generate_game(request):
 
     # Generate game using Claude Sonnet 4 powered generator
     try:
+        print(f"🎮 Starting game generation for: {prompt}")
+
         # Use PixiJSGenerator with Claude Sonnet 4 for game generation
         generator = PixiJSGenerator(use_claude=True)
+        print(f"✓ Generator initialized")
+
         result = generator.generate_game(prompt)
-        
+        print(f"✓ Game generated successfully")
+
         # Update game with generated content
         user_game.title = result['title']
         user_game.description = result['description']
@@ -47,8 +52,16 @@ def generate_game(request):
         user_game.game_data = result['game_data']
         user_game.status = 'ready'
         user_game.save()
-        
+
+        print(f"✓ Game saved to database: {user_game.title}")
+
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ Game generation failed!")
+        print(f"❌ Error: {str(e)}")
+        print(f"❌ Full traceback:\n{error_details}")
+
         user_game.status = 'failed'
         user_game.description = f"Generation failed: {str(e)}"
         user_game.save()
