@@ -34,10 +34,10 @@ def generate_game(request):
         status='generating'
     )
 
-    # Generate game using RAG-powered generator
+    # Generate game using Claude Sonnet 4 powered generator
     try:
-        # Use PixiJSGenerator with RAG for intelligent template retrieval
-        generator = PixiJSGenerator(use_openai=True)
+        # Use PixiJSGenerator with Claude Sonnet 4 for game generation
+        generator = PixiJSGenerator(use_claude=True)
         result = generator.generate_game(prompt)
         
         # Update game with generated content
