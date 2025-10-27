@@ -432,9 +432,16 @@ CRITICAL:
 
         user_message = "".join(user_message_parts)
 
-        # Generate with OpenAI - invoke with user_prompt
-        chain = prompt | self.llm
-        response = chain.invoke({"user_prompt": user_message})
+        # Build messages list for Claude
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        messages = [
+            SystemMessage(content=prompt.messages[0].prompt.template),
+            HumanMessage(content=user_message)
+        ]
+
+        # Generate with Claude - invoke directly with messages
+        response = self.llm.invoke(messages)
 
         # Parse response using delimiter format with fallbacks
         try:
