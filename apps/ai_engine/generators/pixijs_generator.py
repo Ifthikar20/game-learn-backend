@@ -303,14 +303,14 @@ DESCRIPTION:
 [One-line description of what makes it fun]
 
 CODE_START
-(async () => {
+(async () => {{
   // ===== 1. SETUP =====
-  const app = new PIXI.Application({width: 800, height: 600, backgroundColor: 0x1099bb});
+  const app = new PIXI.Application({{width: 800, height: 600, backgroundColor: 0x1099bb}});
   const container = document.getElementById('game-container');
-  if (container) { container.appendChild(app.view); } else { document.body.appendChild(app.view); }
+  if (container) {{ container.appendChild(app.view); }} else {{ document.body.appendChild(app.view); }}
 
   // ... rest of complete code following the 8-section template
-})();
+}})();
 CODE_END
 
 IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeholders!
@@ -318,13 +318,9 @@ IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeho
 
         user_message = "".join(user_message_parts)
 
-        # Add user message to prompt
-        messages = list(prompt.messages) + [("user", user_message)]
-        final_prompt = ChatPromptTemplate.from_messages(messages)
-
-        # Generate with OpenAI
-        chain = final_prompt | self.llm
-        response = chain.invoke({"user_prompt": user_prompt})
+        # Generate with OpenAI - invoke with user_prompt
+        chain = prompt | self.llm
+        response = chain.invoke({"user_prompt": user_message})
 
         # Parse response using delimiter format
         try:
