@@ -1,39 +1,39 @@
 """
-PixiJS Game Generator using RAG and OpenAI
-Generates customized PixiJS games based on user prompts and retrieved templates
+PixiJS Game Generator using Claude Sonnet
+Generates customized PixiJS games based on user prompts with Claude AI
 """
 import os
 import json
 from typing import Dict, Any, Optional
 from django.conf import settings
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain.prompts import ChatPromptTemplate
 from apps.ai_engine.rag.retriever import RAGRetriever
 
 
 class PixiJSGenerator:
     """
-    Generates PixiJS games using Retrieval-Augmented Generation
-    Combines template retrieval with LLM customization
+    Generates PixiJS games using Claude Sonnet
     """
 
-    def __init__(self, use_openai: bool = True):
+    def __init__(self, use_claude: bool = True):
         """
         Initialize the generator
 
         Args:
-            use_openai: Whether to use OpenAI for customization (falls back to template if False)
+            use_claude: Whether to use Claude for generation (falls back to template if False)
         """
         self.retriever = RAGRetriever()
-        self.use_openai = use_openai and bool(getattr(settings, 'OPENAI_API_KEY', ''))
+        self.use_claude = use_claude and bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))
 
-        if self.use_openai:
-            self.llm = ChatOpenAI(
-                model="gpt-4",  # Use GPT-4 for better creativity
-                temperature=0.9,
-                api_key=getattr(settings, 'OPENAI_API_KEY')
+        if self.use_claude:
+            self.llm = ChatAnthropic(
+                model="claude-sonnet-4-20250514",  # Latest Claude Sonnet 4
+                temperature=1.0,
+                max_tokens=8000,
+                api_key=getattr(settings, 'ANTHROPIC_API_KEY')
             )
-            print(f"✓ OpenAI GPT-4 enabled for game generation")
+            print(f"✓ Claude Sonnet 4 enabled for game generation")
 
     def generate_game(self, user_prompt: str) -> Dict[str, Any]:
         """
@@ -47,8 +47,8 @@ class PixiJSGenerator:
         Returns:
             Dictionary containing title, description, pixijs_code, and game_data
         """
-        if self.use_openai:
-            print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
+        if self.use_claude:
+            print(f"🤖 Generating game with Claude Sonnet 4 for: '{user_prompt}'")
             print(f"🚀 Creating from scratch with validation and retry")
 
             max_attempts = 10  # Increased from 3 to 10
@@ -57,7 +57,7 @@ class PixiJSGenerator:
             for attempt in range(1, max_attempts + 1):
                 try:
                     print(f"📝 Attempt {attempt}/{max_attempts}")
-                    result = self._generate_direct_from_gpt(
+                    result = self._generate_direct_from_claude(
                         user_prompt,
                         attempt=attempt,
                         previous_errors=previous_errors
@@ -91,7 +91,7 @@ class PixiJSGenerator:
                         # On retry, pass the exception as an error
                         previous_errors = [f"Exception: {str(e)}"]
         else:
-            print(f"⚠️  OpenAI disabled, using fallback")
+            print(f"⚠️  Claude disabled, using fallback")
             return self._generate_fallback_quiz(user_prompt)
 
     def _validate_game_code(self, code: str) -> list:
@@ -154,9 +154,9 @@ class PixiJSGenerator:
 
         return errors
 
-    def _generate_direct_from_gpt(self, user_prompt: str, attempt: int = 1, previous_errors: list = None) -> Dict[str, Any]:
+    def _generate_direct_from_claude(self, user_prompt: str, attempt: int = 1, previous_errors: list = None) -> Dict[str, Any]:
         """
-        Generate game directly from GPT without using any templates
+        Generate game directly from Claude Sonnet without using any templates
 
         Args:
             user_prompt: User's game description
@@ -211,25 +211,65 @@ REQUIRED GAME STRUCTURE:
   }};
 
   // ===== 3. GRAPHICS OBJECTS =====
-  // IMPORTANT: Draw DETAILED shapes specific to the game theme!
-  // Example for a spaceship (customize for your game):
-  const player = new PIXI.Graphics();
-  player.beginFill(0x3498db);
-  player.moveTo(25, 0);  // Triangle nose
-  player.lineTo(50, 50);
-  player.lineTo(25, 40);
-  player.lineTo(0, 50);
-  player.closePath();
-  player.endFill();
-  player.beginFill(0xe74c3c);  // Engine flames
-  player.drawCircle(25, 50, 5);
-  player.endFill();
+  // IMPORTANT: Draw DETAILED, MULTI-PART shapes specific to the game theme!
+
+  // Example: Detailed character (use Container for multi-part objects)
+  const player = new PIXI.Container();
+
+  // Body
+  const body = new PIXI.Graphics();
+  body.rect(-15, 0, 30, 50);
+  body.fill(0x8B4513);
+  player.addChild(body);
+
+  // Head
+  const head = new PIXI.Graphics();
+  head.circle(0, 0, 15);
+  head.fill(0xFFDBAC);
+  head.y = -10;
+  player.addChild(head);
+
+  // Add more details: hat, eyes, clothes, weapons, etc.
+  // Use different colors for each part!
+
   player.x = 400;
   player.y = 500;
   app.stage.addChild(player);
 
-  // Add particle effects, enemies, obstacles - make it look GOOD!
-  const particles = [];
+  // Create enemies/obstacles with MULTIPLE shapes and colors
+  // Example bird:
+  const bird = new PIXI.Container();
+  const birdBody = new PIXI.Graphics();
+  birdBody.ellipse(0, 0, 20, 12);
+  birdBody.fill(0x8B4513);
+  bird.addChild(birdBody);
+
+  const birdHead = new PIXI.Graphics();
+  birdHead.circle(0, 0, 10);
+  birdHead.fill(0xA0522D);
+  birdHead.x = 18;
+  birdHead.y = -5;
+  bird.addChild(birdHead);
+
+  const beak = new PIXI.Graphics();
+  beak.moveTo(0, 0);
+  beak.lineTo(8, -3);
+  beak.lineTo(8, 3);
+  beak.fill(0xFFA500);
+  beak.x = 25;
+  beak.y = -5;
+  bird.addChild(beak);
+
+  // Wings for animation
+  const leftWing = new PIXI.Graphics();
+  leftWing.ellipse(0, 0, 15, 8);
+  leftWing.fill(0x654321);
+  leftWing.x = -5;
+  leftWing.y = 5;
+  bird.addChild(leftWing);
+  bird.leftWing = leftWing;  // Store for animation
+
+  const particles = [];  // For visual effects
 
   // ===== 4. UI ELEMENTS =====
   const scoreText = new PIXI.Text('Score: 0', {{
@@ -266,20 +306,36 @@ REQUIRED GAME STRUCTURE:
   app.ticker.add((delta) => {{
     if (gameState.gameOver || gameState.paused) return;
 
-    // ANIMATIONS - Add rotation, scaling, alpha changes!
-    player.rotation += 0.01 * delta;  // Gentle rotation
+    // ANIMATIONS - Multiple types of animations!
 
-    // Update player movement with smooth acceleration
-    if (keys['ArrowRight']) player.x += 5 * delta;
-    if (keys['ArrowLeft']) player.x -= 5 * delta;
+    // 1. Wing flapping (for birds/flying enemies)
+    // bird.wingFlap = (bird.wingFlap || 0) + 0.2 * delta.deltaTime;
+    // bird.leftWing.y = 5 + Math.sin(bird.wingFlap) * 8;
+    // bird.rightWing.y = -5 - Math.sin(bird.wingFlap) * 8;
 
-    // Update enemies/obstacles with animations
-    // Make them rotate, bob up/down, pulse scale, etc.
+    // 2. Rotation animations
+    // enemy.rotation += 0.05 * delta.deltaTime;
 
-    // Particle effects
-    // particles.forEach(p => {{ p.alpha -= 0.02; p.y -= 2; }});
+    // 3. Bobbing motion (sin wave)
+    // obstacle.y = baseY + Math.sin(time) * 10;
 
-    // Check collisions and update score
+    // 4. Scaling/pulsing
+    // powerup.scale.set(1 + Math.sin(time * 2) * 0.2);
+
+    // 5. Alpha fading (particles, effects)
+    // particles.forEach(p => {{
+    //   p.alpha -= 0.02 * delta.deltaTime;
+    //   p.y -= 2 * delta.deltaTime;
+    //   if (p.alpha <= 0) removeParticle(p);
+    // }});
+
+    // Player movement with smooth physics
+    if (keys['ArrowRight']) player.x += 5 * delta.deltaTime;
+    if (keys['ArrowLeft']) player.x -= 5 * delta.deltaTime;
+    if (keys['ArrowUp']) player.y -= 5 * delta.deltaTime;
+    if (keys['ArrowDown']) player.y += 5 * delta.deltaTime;
+
+    // Update enemies, check collisions, update score
   }});
 
   // ===== 8. START GAME =====
