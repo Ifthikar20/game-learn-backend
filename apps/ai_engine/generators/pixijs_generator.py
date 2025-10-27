@@ -51,7 +51,7 @@ class PixiJSGenerator:
             print(f"🤖 Generating game directly from GPT-4 for: '{user_prompt}'")
             print(f"🚀 Creating from scratch with validation and retry")
 
-            max_attempts = 3
+            max_attempts = 10  # Increased from 3 to 10
             previous_errors = None
 
             for attempt in range(1, max_attempts + 1):
@@ -294,7 +294,10 @@ CRITICAL INSTRUCTIONS:
 6. Add restart functionality (press R to restart)
 7. Include game over screen with instructions
 
-Return your response in this EXACT format:
+⚠️ MANDATORY OUTPUT FORMAT - DO NOT DEVIATE:
+
+YOU MUST RETURN EXACTLY THIS FORMAT. NO EXPLANATIONS. NO CONVERSATIONAL TEXT. NO MARKDOWN CODE BLOCKS.
+START YOUR RESPONSE WITH "TITLE:" - NOTHING BEFORE IT!
 
 TITLE:
 [One-line game title]
@@ -313,7 +316,12 @@ CODE_START
 }})();
 CODE_END
 
-IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeholders!
+CRITICAL:
+- DO NOT write "Sure, here's..." or any conversational text
+- DO NOT use markdown code blocks (```javascript```)
+- START with "TITLE:" immediately
+- END with "CODE_END"
+- Follow this format EXACTLY or your response will be rejected!
 """)
 
         user_message = "".join(user_message_parts)
@@ -322,9 +330,30 @@ IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeho
         chain = prompt | self.llm
         response = chain.invoke({"user_prompt": user_message})
 
-        # Parse response using delimiter format
+        # Parse response using delimiter format with fallbacks
         try:
             content = response.content.strip()
+
+            # Check if response starts with conversational text
+            if content.lower().startswith(('sure', 'here', 'okay', 'let me', 'i will', 'i\'ll', 'certainly')):
+                print("⚠️  Response starts with conversational text - trying to extract...")
+                # Try to find TITLE: after the conversational intro
+                title_pos = content.find('TITLE:')
+                if title_pos > 0:
+                    content = content[title_pos:]
+                    print(f"✓ Extracted content starting from TITLE:")
+
+            # Remove markdown code blocks if present
+            if '```javascript' in content or '```js' in content:
+                print("⚠️  Response contains markdown code blocks - extracting...")
+                # Extract code from markdown
+                import re
+                code_match = re.search(r'```(?:javascript|js)\n(.*?)\n```', content, re.DOTALL)
+                if code_match:
+                    extracted_code = code_match.group(1)
+                    # Try to rebuild format
+                    content = f"TITLE:\nExtracted Game\n\nDESCRIPTION:\nGame extracted from markdown\n\nCODE_START\n{extracted_code}\nCODE_END"
+                    print(f"✓ Rebuilt format from markdown code block")
 
             # Extract title (between TITLE: and DESCRIPTION:)
             title_match = content.find('TITLE:')
@@ -333,7 +362,20 @@ IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeho
             code_end = content.find('CODE_END')
 
             if title_match == -1 or desc_match == -1 or code_start == -1 or code_end == -1:
-                raise ValueError("Response doesn't match expected delimiter format")
+                missing = []
+                if title_match == -1: missing.append("TITLE:")
+                if desc_match == -1: missing.append("DESCRIPTION:")
+                if code_start == -1: missing.append("CODE_START")
+                if code_end == -1: missing.append("CODE_END")
+
+                error_msg = f"Response missing required delimiters: {', '.join(missing)}"
+                error_msg += f"\n\nYour response MUST start with 'TITLE:' (no text before it!)"
+                error_msg += f"\nYour response MUST contain all 4 delimiters: TITLE:, DESCRIPTION:, CODE_START, CODE_END"
+                error_msg += f"\nDO NOT use conversational text like 'Sure, here is...' or 'Let me create...'"
+                error_msg += f"\nDO NOT use markdown code blocks like ```javascript```"
+                error_msg += f"\nSTART immediately with: TITLE:"
+
+                raise ValueError(error_msg)
 
             # Extract each section
             title = content[title_match + 6:desc_match].strip()
@@ -364,7 +406,27 @@ IMPORTANT: Code must be complete, syntactically valid JavaScript with no placeho
 
         except Exception as e:
             print(f"Failed to parse GPT response: {str(e)}")
-            print(f"Response content: {response.content[:500]}")
+            print(f"Response content (first 500 chars): {response.content[:500]}")
+
+            # Last resort: try to extract raw code if it looks like JavaScript
+            content = response.content.strip()
+            if '(async () =>' in content or 'PIXI.Application' in content:
+                print("⚠️  Attempting emergency code extraction...")
+                import re
+
+                # Try to find async IIFE pattern
+                code_match = re.search(r'\(async \(\) => \{.*?\}\)\(\);', content, re.DOTALL)
+                if code_match:
+                    extracted_code = code_match.group(0)
+                    print(f"✓ Extracted code using regex ({len(extracted_code)} chars)")
+                    return {
+                        'title': 'Emergency Extracted Game',
+                        'description': 'Game code extracted from malformed response',
+                        'pixijs_code': extracted_code,
+                        'game_data': {}
+                    }
+
+            # If we really can't extract anything, raise the original error
             raise
 
     def _generate_from_template(
