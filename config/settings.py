@@ -130,7 +130,9 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all origins in DEBUG mode for easier tes
 CORS_ALLOW_CREDENTIALS = True
 
 # OpenAI (for MVP, we'll use a simple mock first)
-OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
+# AI API Keys
+ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY', default='')
+OPENAI_API_KEY = env('OPENAI_API_KEY', default='')  # Legacy - can be removed
 
 # ChromaDB
 CHROMA_PERSIST_DIRECTORY = str(BASE_DIR / 'data' / 'chroma_db')
