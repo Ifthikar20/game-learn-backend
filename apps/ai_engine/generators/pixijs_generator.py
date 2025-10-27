@@ -27,11 +27,15 @@ class PixiJSGenerator:
         self.use_claude = use_claude and bool(getattr(settings, 'ANTHROPIC_API_KEY', ''))
 
         if self.use_claude:
+            # Set API key as environment variable (required by langchain_anthropic)
+            import os
+            os.environ['ANTHROPIC_API_KEY'] = getattr(settings, 'ANTHROPIC_API_KEY')
+
             self.llm = ChatAnthropic(
                 model="claude-sonnet-4-20250514",  # Latest Claude Sonnet 4
                 temperature=1.0,
-                max_tokens=8000,
-                api_key=getattr(settings, 'ANTHROPIC_API_KEY')
+                max_tokens=8000
+                # API key is read from environment variable automatically
             )
             print(f"✓ Claude Sonnet 4 enabled for game generation")
 
