@@ -169,6 +169,12 @@ class PixiJSGenerator:
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert PixiJS v7 game developer. Create COMPLETE, DETAILED, PLAYABLE games from scratch.
 
+🎯 MOST IMPORTANT: CREATE A GAME THAT EXACTLY MATCHES THE USER'S REQUEST!
+- If they ask for "ducks in space", make a space shooter with duck sprites
+- If they ask for "flying car in tunnels", make a game where a car flies through tunnels
+- If they ask for "shooting birds", make birds fly and let the player shoot them
+- The game MUST be relevant to what the user requested!
+
 CRITICAL CODE STRUCTURE - FOLLOW THIS EXACTLY:
 
 1. ALWAYS wrap code in IIFE: (async () => {{ ... }})();
@@ -176,6 +182,8 @@ CRITICAL CODE STRUCTURE - FOLLOW THIS EXACTLY:
 3. ALWAYS use global PIXI object (NO imports)
 4. ALWAYS append to game-container div
 5. ALWAYS include game loop with app.ticker.add()
+6. ALWAYS add animations (rotation, movement, scaling, alpha changes)
+7. ALWAYS draw detailed graphics (not just simple rectangles!)
 
 REQUIRED GAME STRUCTURE:
 ```javascript
@@ -203,16 +211,25 @@ REQUIRED GAME STRUCTURE:
   }};
 
   // ===== 3. GRAPHICS OBJECTS =====
+  // IMPORTANT: Draw DETAILED shapes specific to the game theme!
+  // Example for a spaceship (customize for your game):
   const player = new PIXI.Graphics();
-  const ui = new PIXI.Container();
-
-  // Draw player (example - make it detailed!)
-  player.beginFill(0xFF0000);
-  player.drawRect(0, 0, 50, 50);
+  player.beginFill(0x3498db);
+  player.moveTo(25, 0);  // Triangle nose
+  player.lineTo(50, 50);
+  player.lineTo(25, 40);
+  player.lineTo(0, 50);
+  player.closePath();
   player.endFill();
-  player.x = 100;
-  player.y = 100;
+  player.beginFill(0xe74c3c);  // Engine flames
+  player.drawCircle(25, 50, 5);
+  player.endFill();
+  player.x = 400;
+  player.y = 500;
   app.stage.addChild(player);
+
+  // Add particle effects, enemies, obstacles - make it look GOOD!
+  const particles = [];
 
   // ===== 4. UI ELEMENTS =====
   const scoreText = new PIXI.Text('Score: 0', {{
@@ -249,13 +266,20 @@ REQUIRED GAME STRUCTURE:
   app.ticker.add((delta) => {{
     if (gameState.gameOver || gameState.paused) return;
 
-    // Update player movement
+    // ANIMATIONS - Add rotation, scaling, alpha changes!
+    player.rotation += 0.01 * delta;  // Gentle rotation
+
+    // Update player movement with smooth acceleration
     if (keys['ArrowRight']) player.x += 5 * delta;
     if (keys['ArrowLeft']) player.x -= 5 * delta;
 
-    // Update game logic
-    // Check collisions
-    // Update score
+    // Update enemies/obstacles with animations
+    // Make them rotate, bob up/down, pulse scale, etc.
+
+    // Particle effects
+    // particles.forEach(p => {{ p.alpha -= 0.02; p.y -= 2; }});
+
+    // Check collisions and update score
   }});
 
   // ===== 8. START GAME =====
@@ -263,20 +287,42 @@ REQUIRED GAME STRUCTURE:
 }})();
 ```
 
-REQUIREMENTS:
+REQUIREMENTS - THESE ARE MANDATORY:
+✅ Game MUST match the user's request (relevant theme, mechanics, visuals)
+✅ Detailed, colorful graphics (NOT simple rectangles - use moveTo/lineTo/arc for complex shapes)
+✅ ANIMATIONS everywhere: rotation, scaling, alpha fading, bobbing, particles
+✅ Multiple colors and visual variety (use different fillStyles)
+✅ Particle effects (explosions, trails, sparkles)
+✅ Smooth movement and physics
 ✅ Complete game mechanics (physics, collisions, scoring)
-✅ Detailed graphics (shapes, colors, animations)
 ✅ Full UI (score, instructions, game over screen)
 ✅ Input handling (keyboard/mouse)
 ✅ Win/lose conditions
 ✅ Restart functionality
-✅ Smooth animations
 
-Make games FUN, COMPLETE, and DETAILED!""")
+VISUAL REQUIREMENTS:
+- Use beginFill() with multiple colors (0xFF0000, 0x00FF00, 0x0000FF, etc.)
+- Draw complex shapes with moveTo(), lineTo(), arc(), bezierCurveTo()
+- Add rotation animations (sprite.rotation += 0.05)
+- Add scaling animations (sprite.scale.x = Math.sin(time) * 0.1 + 1)
+- Add alpha fading effects (sprite.alpha -= 0.01)
+- Create particles for visual effects
+- Make enemies/obstacles visually interesting (not just squares!)
+
+Make games VISUALLY STUNNING, FUN, and EXACTLY MATCHING the user's request!""")
         ])
 
         # Build user message with optional error feedback
-        user_message_parts = [f"Create a COMPLETE PixiJS game for this request:\n\n\"{user_prompt}\"\n"]
+        user_message_parts = [f"""🎮 CREATE THIS EXACT GAME:
+
+"{user_prompt}"
+
+🚨 THE GAME MUST BE SPECIFICALLY ABOUT: {user_prompt}
+- The theme, visuals, and mechanics MUST match this request
+- Don't create a generic game - create THIS specific game!
+- If the prompt mentions specific objects (ducks, cars, tunnels, etc.), INCLUDE THEM in the game!
+
+"""]
 
         if previous_errors and len(previous_errors) > 0:
             user_message_parts.append(f"\n⚠️ PREVIOUS ATTEMPT HAD THESE ERRORS - FIX THEM:\n")
@@ -348,12 +394,37 @@ CRITICAL:
                 print("⚠️  Response contains markdown code blocks - extracting...")
                 # Extract code from markdown
                 import re
+
+                # Try to find title and description before the code block
+                title_before_code = "Extracted Game"
+                desc_before_code = f"A game based on: {user_prompt}"
+
+                # Look for text before the code block
+                code_block_start = content.find('```')
+                if code_block_start > 0:
+                    before_code = content[:code_block_start].strip()
+                    # Try to extract title from conversational text
+                    # Look for patterns like "called X" or "titled X" or game name in quotes
+                    title_patterns = [
+                        r'called["\s]+([^".\n]+)',
+                        r'titled["\s]+([^".\n]+)',
+                        r'"([^"]{5,50})"',  # Quoted text 5-50 chars
+                        r'game:\s*([^\n.]{5,50})'
+                    ]
+                    for pattern in title_patterns:
+                        match = re.search(pattern, before_code, re.IGNORECASE)
+                        if match:
+                            title_before_code = match.group(1).strip()
+                            print(f"✓ Extracted title from text: {title_before_code}")
+                            break
+
                 code_match = re.search(r'```(?:javascript|js)\n(.*?)\n```', content, re.DOTALL)
                 if code_match:
                     extracted_code = code_match.group(1)
-                    # Try to rebuild format
-                    content = f"TITLE:\nExtracted Game\n\nDESCRIPTION:\nGame extracted from markdown\n\nCODE_START\n{extracted_code}\nCODE_END"
+                    # Rebuild format with extracted/inferred title
+                    content = f"TITLE:\n{title_before_code}\n\nDESCRIPTION:\n{desc_before_code}\n\nCODE_START\n{extracted_code}\nCODE_END"
                     print(f"✓ Rebuilt format from markdown code block")
+
 
             # Extract title (between TITLE: and DESCRIPTION:)
             title_match = content.find('TITLE:')
